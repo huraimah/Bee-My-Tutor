@@ -1,4 +1,5 @@
 const StudyMaterial = require('../models/StudyMaterial');
+const { processFile } = require('../services/file.service');
 const StudyPlan = require('../models/StudyPlan');
 const User = require('../models/User');
 const fileService = require('../services/file.service');
@@ -10,39 +11,41 @@ const geminiService = require('../services/gemini.service');
 exports.uploadMaterial = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ msg: 'No file uploaded' });
+      return res.status(400).json({ message: 'No file uploaded' });
     }
-    
-    // Process the uploaded file
-    const processedFile = await fileService.processFile(req.file);
-    
-    // Create new study material
-    const newMaterial = new StudyMaterial({
+
+    // Process file content
+    const processedContent = await processFile(req.file);
+
+    const studyMaterial = new StudyMaterial({
       user: req.user.id,
-      title: req.body.title || processedFile.originalFilename,
-      description: req.body.description || '',
-      fileType: processedFile.fileType,
-      filePath: processedFile.filePath,
-      originalFilename: processedFile.originalFilename,
-      fileSize: processedFile.fileSize,
-      content: processedFile.content,
-      summary: processedFile.summary,
-      keyPoints: processedFile.keyPoints,
-      tags: processedFile.tags,
-      subject: processedFile.subject,
-      difficulty: processedFile.difficulty
+      title: req.body.title || req.file.originalname,
+      description: req.body.description,
+      subject: req.body.subject,
+      fileType: req.file.mimetype,
+      filePath: processedContent.filePath,
+      publicUrl: processedContent.publicUrl,
+      originalFilename: req.file.originalname,
+      fileSize: req.file.size,
+      content: processedContent.content,
+      summary: processedContent.summary,
+      keyPoints: processedContent.keyPoints
     });
-    
-    // Save to database
-    await newMaterial.save();
-    
-    res.json(newMaterial);
-  } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+
+    await studyMaterial.save();
+
+    res.status(200).json({
+      message: 'File uploaded successfully',
+      material: studyMaterial
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({
+      message: 'Failed to upload study material',
+      error: error.message
+    });
   }
 };
-
 // @desc    Get all user's study materials
 // @route   GET /api/study/materials
 // @access  Private

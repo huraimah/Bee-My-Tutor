@@ -1,7 +1,6 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -27,11 +26,9 @@ import LinearProgress from '@mui/material/LinearProgress';
 // Icons
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DescriptionIcon from '@mui/icons-material/Description';
-import CategoryIcon from '@mui/icons-material/Category';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const UploadMaterial = () => {
-  const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [activeStep, setActiveStep] = useState(0);
@@ -47,7 +44,16 @@ const UploadMaterial = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   
+  useEffect(() => {
+    console.log('API URL:', process.env.REACT_APP_API_URL);
+  }, []);
+
   const { title, description, subject, file } = formData;
+
+  // Clear error on mount
+  useEffect(() => {
+    setError(null);
+  }, []);
   
   const subjects = [
     'Mathematics',
@@ -71,17 +77,16 @@ const UploadMaterial = () => {
   
   const handleChange = e => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
     
-    // Clear field-specific error when user starts typing
     if (formErrors[name]) {
-      setFormErrors({
-        ...formErrors,
+      setFormErrors(prev => ({
+        ...prev,
         [name]: ''
-      });
+      }));
     }
   };
   
@@ -89,36 +94,38 @@ const UploadMaterial = () => {
     const selectedFile = e.target.files[0];
     
     if (selectedFile) {
-      // Check file type
-      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      
       if (!allowedTypes.includes(selectedFile.type)) {
-        setFormErrors({
-          ...formErrors,
+        setFormErrors(prev => ({
+          ...prev,
           file: 'Only PDF and DOCX files are allowed'
-        });
+        }));
         return;
       }
       
-      // Check file size (max 10MB)
       if (selectedFile.size > 10 * 1024 * 1024) {
-        setFormErrors({
-          ...formErrors,
+        setFormErrors(prev => ({
+          ...prev,
           file: 'File size should not exceed 10MB'
-        });
+        }));
         return;
       }
       
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         file: selectedFile
-      });
+      }));
       
-      // Clear file error
       if (formErrors.file) {
-        setFormErrors({
-          ...formErrors,
+        setFormErrors(prev => ({
+          ...prev,
           file: ''
-        });
+        }));
       }
     }
   };
@@ -126,22 +133,12 @@ const UploadMaterial = () => {
   const validateStep = (step) => {
     const errors = {};
     
-    if (step === 0) {
-      if (!file) {
-        errors.file = 'Please select a file to upload';
-      }
+    if (step === 0 && !file) {
+      errors.file = 'Please select a file to upload';
     } else if (step === 1) {
-      if (!title.trim()) {
-        errors.title = 'Title is required';
-      }
-      
-      if (!description.trim()) {
-        errors.description = 'Description is required';
-      }
-      
-      if (!subject) {
-        errors.subject = 'Subject is required';
-      }
+      if (!title.trim()) errors.title = 'Title is required';
+      if (!description.trim()) errors.description = 'Description is required';
+      if (!subject) errors.subject = 'Subject is required';
     }
     
     setFormErrors(errors);
@@ -150,12 +147,12 @@ const UploadMaterial = () => {
   
   const handleNext = () => {
     if (validateStep(activeStep)) {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      setActiveStep(prev => prev + 1);
     }
   };
   
   const handleBack = () => {
-    setActiveStep((prevActiveStep) => prevActiveStep - 1);
+    setActiveStep(prev => prev - 1);
   };
   
   const handleSubmit = async (e) => {
@@ -172,232 +169,42 @@ const UploadMaterial = () => {
       formDataToSend.append('file', file);
       
       try {
-        await axios.post('/api/study/materials', formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_URL}/api/study/materials`,
+          formDataToSend,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              setUploadProgress(percentCompleted);
+            }
           }
-        });
+        );
         
+        console.log('Upload success:', response.data);
         setSuccess(true);
-        setLoading(false);
         
-        // Redirect to study materials page after 2 seconds
         setTimeout(() => {
           navigate('/materials');
         }, 2000);
       } catch (err) {
+        console.error('Upload error:', err);
+        setError(
+          err.response?.data?.message || 
+          'Failed to upload study material. Please try again.'
+        );
+      } finally {
         setLoading(false);
-        setError(err.response?.data?.msg || 'Failed to upload study material. Please try again.');
       }
     }
   };
-  
-  const steps = [
-    {
-      label: 'Select File',
-      description: 'Choose a PDF or DOCX file to upload',
-      content: (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <input
-            accept=".pdf,.docx"
-            style={{ display: 'none' }}
-            id="file-upload"
-            type="file"
-            onChange={handleFileChange}
-          />
-          <label htmlFor="file-upload">
-            <Button
-              variant="outlined"
-              component="span"
-              startIcon={<CloudUploadIcon />}
-              size="large"
-              sx={{ mb: 3 }}
-            >
-              Select File
-            </Button>
-          </label>
-          
-          {formErrors.file && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {formErrors.file}
-            </Alert>
-          )}
-          
-          {file && (
-            <Paper sx={{ p: 3, mt: 3, maxWidth: 400, mx: 'auto' }}>
-              <DescriptionIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h6" gutterBottom>
-                {file.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {(file.size / (1024 * 1024)).toFixed(2)} MB
-              </Typography>
-              <Chip 
-                label={file.type.includes('pdf') ? 'PDF' : 'DOCX'} 
-                color="primary" 
-                size="small" 
-                sx={{ mt: 1 }} 
-              />
-            </Paper>
-          )}
-        </Box>
-      )
-    },
-    {
-      label: 'Add Details',
-      description: 'Provide information about your study material',
-      content: (
-        <Box sx={{ py: 2 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                id="title"
-                label="Title"
-                name="title"
-                value={title}
-                onChange={handleChange}
-                error={!!formErrors.title}
-                helperText={formErrors.title}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                required
-                fullWidth
-                id="description"
-                label="Description"
-                name="description"
-                value={description}
-                onChange={handleChange}
-                multiline
-                rows={4}
-                error={!!formErrors.description}
-                helperText={formErrors.description}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth required error={!!formErrors.subject}>
-                <InputLabel id="subject-label">Subject</InputLabel>
-                <Select
-                  labelId="subject-label"
-                  id="subject"
-                  name="subject"
-                  value={subject}
-                  label="Subject"
-                  onChange={handleChange}
-                >
-                  {subjects.map((subj) => (
-                    <MenuItem key={subj} value={subj}>
-                      {subj}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {formErrors.subject && (
-                  <Typography variant="caption" color="error">
-                    {formErrors.subject}
-                  </Typography>
-                )}
-              </FormControl>
-            </Grid>
-          </Grid>
-        </Box>
-      )
-    },
-    {
-      label: 'Review & Upload',
-      description: 'Review your information and upload',
-      content: (
-        <Box sx={{ py: 2 }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              File Information
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  File Name:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {file?.name}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  File Size:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : ''}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  File Type:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {file ? (file.type.includes('pdf') ? 'PDF' : 'DOCX') : ''}
-                </Typography>
-              </Grid>
-            </Grid>
-            
-            <Divider sx={{ my: 2 }} />
-            
-            <Typography variant="h6" gutterBottom>
-              Material Details
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Title:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {title}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Subject:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {subject}
-                </Typography>
-              </Grid>
-              
-              <Grid item xs={4}>
-                <Typography variant="body2" color="text.secondary">
-                  Description:
-                </Typography>
-              </Grid>
-              <Grid item xs={8}>
-                <Typography variant="body2">
-                  {description}
-                </Typography>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Box>
-      )
-    }
-  ];
-  
+
+  // Success view
   if (success) {
     return (
       <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
@@ -416,7 +223,8 @@ const UploadMaterial = () => {
       </Container>
     );
   }
-  
+
+  // Main render
   return (
     <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
       <Paper sx={{ p: { xs: 2, md: 4 } }}>
@@ -427,14 +235,18 @@ const UploadMaterial = () => {
           </Typography>
         </Box>
         
-        {error && (
+        {error && !loading && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
         
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
-          {steps.map((step) => (
+          {[
+            { label: 'Select File' },
+            { label: 'Add Details' },
+            { label: 'Review & Upload' }
+          ].map((step) => (
             <Step key={step.label}>
               <StepLabel>{step.label}</StepLabel>
             </Step>
@@ -442,11 +254,204 @@ const UploadMaterial = () => {
         </Stepper>
         
         <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-          {steps[activeStep].description}
+          {activeStep === 0 && 'Choose a PDF or DOCX file to upload'}
+          {activeStep === 1 && 'Provide information about your study material'}
+          {activeStep === 2 && 'Review your information and upload'}
         </Typography>
         
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          {steps[activeStep].content}
+          {/* Step 1: File Upload */}
+          {activeStep === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <input
+                accept=".pdf,.docx"
+                style={{ display: 'none' }}
+                id="file-upload"
+                type="file"
+                onChange={handleFileChange}
+              />
+              <label htmlFor="file-upload">
+                <Button
+                  variant="outlined"
+                  component="span"
+                  startIcon={<CloudUploadIcon />}
+                  size="large"
+                  sx={{ mb: 3 }}
+                >
+                  Select File
+                </Button>
+              </label>
+              
+              {formErrors.file && (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {formErrors.file}
+                </Alert>
+              )}
+              
+              {file && (
+                <Paper sx={{ p: 3, mt: 3, maxWidth: 400, mx: 'auto' }}>
+                  <DescriptionIcon color="primary" sx={{ fontSize: 40, mb: 1 }} />
+                  <Typography variant="h6" gutterBottom>
+                    {file.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {(file.size / (1024 * 1024)).toFixed(2)} MB
+                  </Typography>
+                  <Chip 
+                    label={file.type.includes('pdf') ? 'PDF' : 'DOCX'} 
+                    color="primary" 
+                    size="small" 
+                    sx={{ mt: 1 }} 
+                  />
+                </Paper>
+              )}
+            </Box>
+          )}
+
+          {/* Step 2: Details */}
+          {activeStep === 1 && (
+            <Box sx={{ py: 2 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    id="title"
+                    label="Title"
+                    name="title"
+                    value={title}
+                    onChange={handleChange}
+                    error={!!formErrors.title}
+                    helperText={formErrors.title}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    required
+                    fullWidth
+                    id="description"
+                    label="Description"
+                    name="description"
+                    value={description}
+                    onChange={handleChange}
+                    multiline
+                    rows={4}
+                    error={!!formErrors.description}
+                    helperText={formErrors.description}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth required error={!!formErrors.subject}>
+                    <InputLabel id="subject-label">Subject</InputLabel>
+                    <Select
+                      labelId="subject-label"
+                      id="subject"
+                      name="subject"
+                      value={subject}
+                      label="Subject"
+                      onChange={handleChange}
+                    >
+                      {subjects.map((subj) => (
+                        <MenuItem key={subj} value={subj}>
+                          {subj}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {formErrors.subject && (
+                      <Typography variant="caption" color="error">
+                        {formErrors.subject}
+                      </Typography>
+                    )}
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          {/* Step 3: Review */}
+          {activeStep === 2 && (
+            <Box sx={{ py: 2 }}>
+              <Paper sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  File Information
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      File Name:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {file?.name}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      File Size:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {file ? `${(file.size / (1024 * 1024)).toFixed(2)} MB` : ''}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      File Type:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {file ? (file.type.includes('pdf') ? 'PDF' : 'DOCX') : ''}
+                    </Typography>
+                  </Grid>
+                </Grid>
+                
+                <Divider sx={{ my: 2 }} />
+                
+                <Typography variant="h6" gutterBottom>
+                  Material Details
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Title:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {title}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Subject:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {subject}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={4}>
+                    <Typography variant="body2" color="text.secondary">
+                      Description:
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={8}>
+                    <Typography variant="body2">
+                      {description}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+            </Box>
+          )}
           
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
             <Button
@@ -456,7 +461,7 @@ const UploadMaterial = () => {
               Back
             </Button>
             <Box>
-              {activeStep === steps.length - 1 ? (
+              {activeStep === 2 ? (
                 <Button
                   variant="contained"
                   color="primary"

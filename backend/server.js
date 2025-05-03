@@ -4,15 +4,30 @@ const path = require('path');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const seedDatabase = require('./src/utils/seedDatabase');
+const multer = require('multer');
 require('dotenv').config();
+
+// Initialize Firebase Admin
+require('./src/utils/firebase-admin');
 
 // Initialize Express
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Create uploads directory for temporary file storage
+const uploadDir = path.join(__dirname, 'uploads');
+const fs = require('fs');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadDir));
 
 // Import Routes
 const authRoutes = require('./src/routes/auth.routes');
@@ -26,39 +41,39 @@ app.use('/api/users', userRoutes);
 app.use('/api/study', studyRoutes);
 app.use('/api/quiz', quizRoutes);
 
-// Serve static assets if in production
-if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  app.use(express.static('client/build'));
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    message: 'Something went wrong!',
+    error: err.message
+  });
+});
 
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static('client/build'));
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'client', 'build', 'index.html'));
   });
 }
 
 // Connect to MongoDB
-// Connect to MongoDB
 const connectDB = async () => {
   try {
-    // Create an in-memory MongoDB instance
     const mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     
     console.log(`Using in-memory MongoDB at: ${mongoUri}`);
     
-    // Connect to the in-memory database
     await mongoose.connect(mongoUri);
-    
     console.log('MongoDB In-Memory Server Connected...');
     
-    // Seed some initial data
     await seedDatabase();
-    
     return true;
   } catch (err) {
     console.error('MongoDB Connection Error:', err.message);
     console.log('Continuing without database connection. Some features will not work.');
-    // Continue running the app without database
     return false;
   }
 };
@@ -66,12 +81,10 @@ const connectDB = async () => {
 // Connect to database
 connectDB();
 
-// Define PORT
-const PORT = process.env.PORT || 5000;
+// Define PORT and start server
+const PORT = process.env.PORT || 5002;
+const alternativePort = 5005;
 
-// Start server
-// Use a different port if 5000 is in use
-const alternativePort = 5001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 }).on('error', (err) => {

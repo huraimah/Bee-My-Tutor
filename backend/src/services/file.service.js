@@ -3,6 +3,7 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 const geminiService = require('./gemini.service');
+const firebaseService = require('./firebase.service');
 
 // Process uploaded file and extract content
 const processFile = async (file) => {
@@ -26,9 +27,13 @@ const processFile = async (file) => {
     // Extract metadata using Gemini API
     const metadata = await geminiService.extractContentFromMaterial(fileContent, fileType);
     
+    // Upload file to Firebase Storage
+    const uploadedFile = await firebaseService.uploadFile(file);
+    
     return {
       originalFilename: file.originalname,
-      filePath: filePath,
+      filePath: uploadedFile.filePath,
+      publicUrl: uploadedFile.publicUrl,
       fileSize: file.size,
       fileType: fileType,
       content: fileContent,
@@ -63,10 +68,14 @@ const extractDocxContent = async (filePath) => {
   }
 };
 
-// Delete file from filesystem
+// Delete file from Firebase Storage
 const deleteFile = async (filePath) => {
   try {
-    if (fs.existsSync(filePath)) {
+    // Check if it's a Firebase Storage path
+    if (filePath && filePath.startsWith('uploads/')) {
+      await firebaseService.deleteFile(filePath);
+    } else if (fs.existsSync(filePath)) {
+      // For backward compatibility with local files
       fs.unlinkSync(filePath);
     }
   } catch (error) {

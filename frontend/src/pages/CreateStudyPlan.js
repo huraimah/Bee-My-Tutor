@@ -238,7 +238,7 @@ const CreateStudyPlan = () => {
           sessions: formattedSessions
         };
         
-        const res = await axios.post('/api/study/plans', dataToSubmit);
+        const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/study/plans`, dataToSubmit);
         
         setLoading(false);
         navigate(`/study-plans/${res.data._id}`);

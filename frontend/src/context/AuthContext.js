@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         // Get additional user data from your backend if needed
         // This is optional - you can also just use the Firebase user data
         try {
-          const res = await axios.get('/api/auth/me');
+          const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/auth/me`);
           // Combine Firebase user with any additional backend data
           const userData = {
             uid: user.uid,

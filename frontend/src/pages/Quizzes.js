@@ -50,7 +50,7 @@ const Quizzes = () => {
   useEffect(() => {
     const fetchQuizzes = async () => {
       try {
-        const res = await axios.get('/api/quizzes');
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/quizzes`);
         setQuizzes(res.data);
         setLoading(false);
       } catch (err) {
@@ -96,7 +96,7 @@ const Quizzes = () => {
   const handleDeleteQuiz = async (id) => {
     if (window.confirm('Are you sure you want to delete this quiz?')) {
       try {
-        await axios.delete(`/api/quizzes/${id}`);
+        await axios.delete(`${process.env.REACT_APP_API_URL}/api/quizzes/${id}`);
         setQuizzes(quizzes.filter(quiz => quiz._id !== id));
       } catch (err) {
         console.error('Error deleting quiz:', err);
