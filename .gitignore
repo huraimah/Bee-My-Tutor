@@ -2,6 +2,6 @@
 node_modules/
 
 # Environment variables
-.env
+**/.env
 # Firebase credentials
 **/serviceAccountKey.json
