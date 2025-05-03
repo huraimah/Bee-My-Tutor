@@ -1,23 +1,31 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const admin = require('../utils/firebase-admin');
 
-module.exports = function(req, res, next) {
+module.exports = async function(req, res, next) {
   // Get token from header
-  const token = req.header('x-auth-token');
-
+  const authHeader = req.header('Authorization');
+  
   // Check if no token
-  if (!token) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ msg: 'No token, authorization denied' });
   }
 
+  // Extract the token
+  const token = authHeader.split(' ')[1];
+
   // Verify token
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret');
+    const decodedToken = await admin.auth().verifyIdToken(token);
     
     // Add user from payload
-    req.user = decoded.user;
+    req.user = {
+      id: decodedToken.uid,
+      email: decodedToken.email,
+      name: decodedToken.name || decodedToken.email
+    };
+    
     next();
   } catch (err) {
+    console.error('Token verification error:', err);
     res.status(401).json({ msg: 'Token is not valid' });
   }
 };

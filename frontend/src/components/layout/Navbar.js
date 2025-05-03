@@ -32,7 +32,7 @@ import InsightsIcon from '@mui/icons-material/Insights';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
-import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import GoogleIcon from '@mui/icons-material/Google';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useContext(AuthContext);
@@ -140,14 +140,7 @@ const Navbar = () => {
             <ListItemIcon>
               <LoginIcon />
             </ListItemIcon>
-            <ListItemText primary="Login" />
-          </ListItem>
-          
-          <ListItem button component={RouterLink} to="/register">
-            <ListItemIcon>
-              <PersonAddIcon />
-            </ListItemIcon>
-            <ListItemText primary="Register" />
+            <ListItemText primary="Login with Google" />
           </ListItem>
         </List>
       )}
@@ -262,7 +255,10 @@ const Navbar = () => {
               <>
                 <Tooltip title="Open settings">
                   <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                    <Avatar alt={user?.name || 'User'} src="/static/images/avatar/2.jpg" />
+                    <Avatar 
+                      alt={user?.displayName || user?.name || 'User'} 
+                      src={user?.photoURL || '/static/images/avatar/2.jpg'} 
+                    />
                   </IconButton>
                 </Tooltip>
                 <Menu
@@ -298,17 +294,9 @@ const Navbar = () => {
                   component={RouterLink}
                   to="/login"
                   color="inherit"
-                  sx={{ mr: 1 }}
+                  startIcon={<GoogleIcon />}
                 >
-                  Login
-                </Button>
-                <Button
-                  component={RouterLink}
-                  to="/register"
-                  variant="outlined"
-                  color="inherit"
-                >
-                  Register
+                  Sign in with Google
                 </Button>
               </Box>
             )}

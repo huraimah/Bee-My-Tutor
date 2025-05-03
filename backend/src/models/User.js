@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
+  firebaseUid: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   name: {
     type: String,
     required: true
@@ -12,7 +17,8 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    // Not required for Firebase auth
+    required: false
   },
   institution: {
     type: String,
