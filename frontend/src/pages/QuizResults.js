@@ -139,6 +139,7 @@ const QuizResults = () => {
         <Chip label={quiz.subject} sx={{ mr: 1 }} />
         <Chip label={`Completed: ${new Date(result.date).toLocaleDateString()}`} />
 
+        { /*
         <Box sx={{ textAlign: 'center', my: 4 }}>
           <CircularProgress variant="determinate" value={score} size={160} thickness={5} color={scoreColor} />
           <Typography variant="h3" color={`${scoreColor}.main`} sx={{ mt: -10 }}>
@@ -147,7 +148,8 @@ const QuizResults = () => {
           <Typography variant="body2">
             {correct}/{total}
           </Typography>
-        </Box>
+        </Box> 
+        */}
 
         <Typography variant="h6" align="center" color={`${scoreColor}.main`} gutterBottom>
           {getFeedback(score)}
