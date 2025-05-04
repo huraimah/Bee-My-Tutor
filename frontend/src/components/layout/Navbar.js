@@ -29,7 +29,6 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import QuizIcon from '@mui/icons-material/Quiz';
 import InsightsIcon from '@mui/icons-material/Insights';
-import PsychologyIcon from '@mui/icons-material/Psychology';
 import LogoutIcon from '@mui/icons-material/Logout';
 import LoginIcon from '@mui/icons-material/Login';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -74,7 +73,7 @@ const Navbar = () => {
           <ListItemIcon>
             <SchoolIcon color="primary" />
           </ListItemIcon>
-          <ListItemText primary="EduGenius" primaryTypographyProps={{ variant: 'h6' }} />
+          <ListItemText primary="Bee My Tutor" primaryTypographyProps={{ variant: 'h6' }} />
         </ListItem>
       </List>
       <Divider />
@@ -91,7 +90,7 @@ const Navbar = () => {
             
             <ListItem button component={RouterLink} to="/learning-style">
               <ListItemIcon>
-                <PsychologyIcon />
+                <img src="/hat.png" alt="Bee My Tutor Logo" style={{ width: 24, height: 24 }} />
               </ListItemIcon>
               <ListItemText primary="Learning Style" />
             </ListItem>
@@ -173,7 +172,7 @@ const Navbar = () => {
           </Box>
           
           {/* Logo for mobile */}
-          <SchoolIcon sx={{ display: { xs: 'flex', md: 'none' }, mr: 1 }} />
+          <img src="/hat.png" alt="Bee My Tutor Logo" style={{ display: { xs: 'flex', md: 'none' }, mr: 1, height: 40 }} />
           <Typography
             variant="h6"
             noWrap
@@ -190,11 +189,11 @@ const Navbar = () => {
               textDecoration: 'none',
             }}
           >
-            EduGenius
+            Bee My Tutor
           </Typography>
           
           {/* Logo for desktop */}
-          <SchoolIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
+          <img src="/hat.png" alt="Bee My Tutor Logo" style={{ display: { xs: 'none', md: 'flex' }, mr: 1, height: 40 }} />
           <Typography
             variant="h6"
             noWrap
@@ -210,7 +209,7 @@ const Navbar = () => {
               textDecoration: 'none',
             }}
           >
-            EduGenius
+            Bee My Tutor
           </Typography>
           
           {/* Desktop navigation */}
