@@ -1,4 +1,4 @@
-# EduGenius - AI-Powered Education Platform
+# Bee My Tutor - AI-Powered Education Platform
 
 EduGenius is an intelligent education platform that leverages AI to personalize the learning experience. The application helps students identify their learning style, organize study materials, create personalized study plans, and test their knowledge with AI-generated quizzes.
 
