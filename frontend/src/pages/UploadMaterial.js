@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
+import { auth, storage, db } from '../utils/firebase';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -162,43 +164,72 @@ const UploadMaterial = () => {
       setLoading(true);
       setError(null);
       
-      const formDataToSend = new FormData();
-      formDataToSend.append('title', title);
-      formDataToSend.append('description', description);
-      formDataToSend.append('subject', subject);
-      formDataToSend.append('file', file);
-      
       try {
-        const response = await axios.post(
-          `${process.env.REACT_APP_API_URL}/api/study/materials`,
-          formDataToSend,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            onUploadProgress: (progressEvent) => {
-              const percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              setUploadProgress(percentCompleted);
+        // Validate file size
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('File size should not exceed 10MB');
+        }
+
+        // Create optimized file name
+        const timestamp = Date.now();
+        const fileExtension = file.name.split('.').pop();
+        const fileName = `${timestamp}.${fileExtension}`;
+        const storageRef = ref(storage, `materials/${fileName}`);
+
+        // Create upload task with chunked upload
+        const uploadTask = uploadBytesResumable(storageRef, file, {
+          customMetadata: {
+            originalName: file.name
+          }
+        });
+
+        // Handle upload state changes
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(Math.round(progress));
+            
+            // Log transfer rate
+            const delta = snapshot.bytesTransferred / ((Date.now() - timestamp) / 1000);
+            console.log(`Upload rate: ${(delta / (1024 * 1024)).toFixed(2)} MB/s`);
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            setError('Failed to upload file. Please try again.');
+            setLoading(false);
+          },
+          async () => {
+            try {
+              // Get download URL
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              
+              // Save to Firestore with optimized data
+              const materialData = {
+                title,
+                description,
+                subject,
+                fileUrl: downloadURL,
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                userId: auth.currentUser?.uid,
+                createdAt: new Date().toISOString()
+              };
+
+              await addDoc(collection(db, 'materials'), materialData);
+              
+              setSuccess(true);
+              setTimeout(() => navigate('/materials'), 1500);
+            } catch (err) {
+              console.error('Firestore error:', err);
+              setError('Failed to save material information.');
+              setLoading(false);
             }
           }
         );
-        
-        console.log('Upload success:', response.data);
-        setSuccess(true);
-        
-        setTimeout(() => {
-          navigate('/materials');
-        }, 2000);
       } catch (err) {
         console.error('Upload error:', err);
-        setError(
-          err.response?.data?.message || 
-          'Failed to upload study material. Please try again.'
-        );
-      } finally {
+        setError(err.message || 'Failed to upload study material.');
         setLoading(false);
       }
     }

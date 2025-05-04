@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { generateLearningStyleAssessment, analyzeLearningStyle } from '../utils/gemini';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../utils/firebase';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -40,6 +42,7 @@ import SportsHandballIcon from '@mui/icons-material/SportsHandball';
 const LearningStyleAssessment = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,32 +53,26 @@ const LearningStyleAssessment = () => {
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    const fetchLearningStyle = async () => {
+    const initializeAssessment = async () => {
       try {
-        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/learning-style`);
-        
-        if (res.data.isCompleted) {
-          // User has already completed the assessment
-          setResult({
-            learningStyle: res.data.learningStyle
-          });
-          setLoading(false);
+        if (location.state?.assessment) {
+          setAssessment(location.state.assessment);
+          setAnswers(new Array(location.state.assessment.questions.length).fill(null));
         } else {
-          // User needs to take the assessment
-          setAssessment(res.data.assessment);
-          // Initialize answers array with empty values
-          setAnswers(new Array(res.data.assessment.questions.length).fill(null));
-          setLoading(false);
+          const generatedAssessment = await generateLearningStyleAssessment();
+          setAssessment(generatedAssessment);
+          setAnswers(new Array(generatedAssessment.questions.length).fill(null));
         }
       } catch (err) {
-        console.error('Error fetching learning style:', err);
-        setError('Failed to load learning style assessment. Please try again later.');
+        console.error('Error generating assessment:', err);
+        setError('Failed to generate assessment. Please try again.');
+      } finally {
         setLoading(false);
       }
     };
-    
-    fetchLearningStyle();
-  }, []);
+
+    initializeAssessment();
+  }, [location.state]);
   
   const handleAnswerChange = (value) => {
     const newAnswers = [...answers];
@@ -96,7 +93,6 @@ const LearningStyleAssessment = () => {
   };
   
   const handleSubmit = async () => {
-    // Check if all questions are answered
     if (answers.includes(null)) {
       setError('Please answer all questions before submitting.');
       return;
@@ -105,7 +101,7 @@ const LearningStyleAssessment = () => {
     setSubmitting(true);
     
     try {
-      // Format answers for submission
+      // Format answers for analysis
       const formattedAnswers = answers.map((answer, index) => {
         const question = assessment.questions[index];
         const selectedOption = question.options.find(option => option.id === answer);
@@ -117,16 +113,26 @@ const LearningStyleAssessment = () => {
         };
       });
       
-      // Submit answers to API
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/users/learning-style`, {
-        answers: formattedAnswers
-      });
+      // Get analysis from Gemini
+      const analysis = await analyzeLearningStyle(formattedAnswers);
       
-      setResult(res.data);
-      setSubmitting(false);
+      // Save results to Firestore
+      if (auth.currentUser) {
+        await setDoc(doc(db, 'users', auth.currentUser.uid), {
+          learningStyle: analysis.analysis,
+          assessmentCompleted: true,
+          lastUpdated: new Date().toISOString()
+        }, { merge: true });
+      }
+      
+      setResult({
+        learningStyle: analysis.analysis,
+        analysis: analysis.analysis
+      });
     } catch (err) {
-      console.error('Error submitting assessment:', err);
-      setError('Failed to submit assessment. Please try again.');
+      console.error('Error analyzing assessment:', err);
+      setError('Failed to analyze results. Please try again.');
+    } finally {
       setSubmitting(false);
     }
   };
@@ -365,7 +371,8 @@ const LearningStyleAssessment = () => {
         Learning Style Assessment
       </Typography>
       <Typography variant="body1" paragraph align="center">
-        Answer the following questions to discover your optimal learning style.
+        Answer these questions to discover your optimal learning style.
+        This AI-powered assessment will analyze your responses to provide personalized recommendations.
       </Typography>
       
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
@@ -426,8 +433,9 @@ const LearningStyleAssessment = () => {
                 color="primary"
                 onClick={handleSubmit}
                 disabled={answers[currentQuestion] === null || submitting}
+                startIcon={submitting && <CircularProgress size={20} />}
               >
-                {submitting ? <CircularProgress size={24} /> : 'Submit'}
+                {submitting ? 'Analyzing...' : 'Submit'}
               </Button>
             )}
           </Box>

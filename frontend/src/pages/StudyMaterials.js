@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  deleteDoc, 
+  doc 
+} from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { auth, db, storage } from '../utils/firebase';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -33,6 +42,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AddIcon from '@mui/icons-material/Add';
 
 const StudyMaterials = () => {
+  // Add user check at the start
   const { user } = useContext(AuthContext);
   const [materials, setMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,13 +55,30 @@ const StudyMaterials = () => {
 
   useEffect(() => {
     const fetchMaterials = async () => {
-      try {
-        const res = await axios.get('/api/study/materials');
-        setMaterials(res.data);
+      if (!auth.currentUser) {
+        setError('Please login to view materials');
         setLoading(false);
+        return;
+      }
+
+      try {
+        const materialsRef = collection(db, 'materials');
+        const q = query(
+          materialsRef, 
+          where('userId', '==', auth.currentUser.uid)
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const materialsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        setMaterials(materialsData);
       } catch (err) {
-        console.error('Error fetching study materials:', err);
-        setError('Failed to load study materials. Please try again later.');
+        console.error('Error fetching materials:', err);
+        setError('Failed to load study materials');
+      } finally {
         setLoading(false);
       }
     };
@@ -92,11 +119,21 @@ const StudyMaterials = () => {
   const handleDeleteMaterial = async (id) => {
     if (window.confirm('Are you sure you want to delete this material?')) {
       try {
-        await axios.delete(`/api/study/materials/${id}`);
-        setMaterials(materials.filter(material => material._id !== id));
+        // Get material data
+        const material = materials.find(m => m.id === id);
+        
+        // Delete file from Storage
+        const storageRef = ref(storage, material.fileUrl);
+        await deleteObject(storageRef);
+        
+        // Delete document from Firestore
+        await deleteDoc(doc(db, 'materials', id));
+        
+        // Update UI
+        setMaterials(materials.filter(m => m.id !== id));
       } catch (err) {
-        console.error('Error deleting study material:', err);
-        setError('Failed to delete study material. Please try again later.');
+        console.error('Error deleting material:', err);
+        setError('Failed to delete material');
       }
     }
   };

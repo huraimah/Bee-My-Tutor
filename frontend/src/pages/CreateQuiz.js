@@ -1,7 +1,10 @@
 import React, { useState, useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
-import { AuthContext } from '../context/AuthContext';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { storage } from '../utils/firebase';
+
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -53,6 +56,7 @@ const CreateQuiz = () => {
   const navigate = useNavigate();
   
   const [activeStep, setActiveStep] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -70,7 +74,8 @@ const CreateQuiz = () => {
     text: '',
     options: ['', '', '', ''],
     correctAnswer: '',
-    explanation: ''
+    explanation: '',
+    file: null 
   });
   const [questionFormErrors, setQuestionFormErrors] = useState({});
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
@@ -201,6 +206,19 @@ const CreateQuiz = () => {
       errors.text = 'Question text is required';
     }
     
+    // Add file validation
+    if (questionFormData.file) {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (questionFormData.file.size > maxSize) {
+        errors.file = 'File size must be less than 5MB';
+      }
+      
+      const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(questionFormData.file.type)) {
+        errors.file = 'Only JPG, PNG and PDF files are allowed';
+      }
+    }
+    
     // Check if at least 2 options are provided
     const filledOptions = questionFormData.options.filter(option => option.trim() !== '');
     if (filledOptions.length < 2) {
@@ -326,23 +344,80 @@ const CreateQuiz = () => {
       
       try {
         // Format questions for API
-        const formattedQuestions = questions.map(({ id, ...rest }) => rest);
-        
+        const formattedQuestions = await Promise.all(questions.map(async ({ id, file, ...rest }) => {
+          if (file) {
+            // Create file reference with unique name
+            const fileRef = ref(storage, `quizzes/${Date.now()}-${file.name}`);
+            
+            // Upload file with progress monitoring
+            const uploadTask = uploadBytesResumable(fileRef, file);
+            
+            // Monitor upload progress
+            await new Promise((resolve, reject) => {
+              uploadTask.on(
+                'state_changed',
+                (snapshot) => {
+                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                  setUploadProgress(progress);
+                },
+                (error) => {
+                  console.error('Upload error:', error);
+                  reject(error);
+                },
+                async () => {
+                  // Get download URL when upload completes
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  resolve(downloadURL);
+                }
+              );
+            });
+            
+            // Return question with file URL
+            return {
+              ...rest,
+              fileUrl: await getDownloadURL(fileRef)
+            };
+          }
+          return rest;
+        }));
         const dataToSubmit = {
           ...formData,
-          questions: formattedQuestions
+          questions: formattedQuestions,
+          userId: user.uid,
+          createdAt: new Date().toISOString()
         };
         
-        const res = await axios.post('/api/quizzes', dataToSubmit);
+        // Save to Firestore instead of REST API
+        const quizRef = await addDoc(collection(db, 'quizzes'), dataToSubmit);
         
         setLoading(false);
-        navigate(`/quizzes/${res.data._id}`);
+        navigate(`/quizzes/${quizRef.id}`);
       } catch (err) {
+        console.error('Quiz creation error:', err);
         setLoading(false);
-        setError(err.response?.data?.msg || 'Failed to create quiz. Please try again.');
+        setError('Failed to create quiz. Please try again.');
       }
     }
   };
+
+  // Add progress indicator to the UI
+  const renderProgress = () => {
+    if (loading && uploadProgress > 0) {
+      return (
+        <Box sx={{ width: '100%', mt: 2 }}>
+          <LinearProgress 
+            variant="determinate" 
+            value={uploadProgress} 
+          />
+          <Typography variant="body2" color="text.secondary" align="center">
+            Uploading: {Math.round(uploadProgress)}%
+          </Typography>
+        </Box>
+      );
+    }
+    return null;
+  };
+
   
   // Get difficulty label
   const getDifficultyLabel = (level) => {

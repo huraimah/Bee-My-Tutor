@@ -2,6 +2,8 @@ import React, { useContext, useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { generateLearningStyleAssessment } from '../utils/gemini';
+import { useNavigate } from 'react-router-dom';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -32,6 +34,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PendingIcon from '@mui/icons-material/Pending';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, loading } = useContext(AuthContext);
   const [stats, setStats] = useState({
     materials: { count: 0, recent: [] },
@@ -130,6 +133,31 @@ const Dashboard = () => {
       </Box>
     );
   }
+
+  const handleLearningStyleClick = async () => {
+    if (stats.learningStyle?.dominantStyle === 'unknown') {
+      try {
+        // Generate new assessment
+        const assessment = await generateLearningStyleAssessment();
+        // Store in state/context if needed
+        navigate('/learning-style', { state: { assessment } });
+      } catch (err) {
+        console.error('Error generating assessment:', err);
+        // Handle error
+      }
+    } else {
+      navigate('/learning-style');
+    }
+  };
+  
+  // Update the button click handler
+  <Button
+    variant="contained"
+    onClick={handleLearningStyleClick}
+    startIcon={<SchoolIcon />}
+  >
+    {stats.learningStyle?.dominantStyle === 'unknown' ? 'Take Assessment' : 'View Details'}
+  </Button>
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
