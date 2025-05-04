@@ -6,6 +6,16 @@ const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 // Initialize the Gemini API
 const genAI = new GoogleGenerativeAI(API_KEY);
 
+// Check if API key is available
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('Warning: GEMINI_API_KEY environment variable is not set. Gemini API features will not work properly.');
+}
+
+// Get the Gemini Pro model
+const getGeminiModel = () => {
+  return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+}
+
 export const generateLearningStyleAssessment = async () => {
   try {
     const model = getGeminiModel();
@@ -54,7 +64,7 @@ export const analyzeLearningStyle = async (answers) => {
 export const generateQuizFromContent = async (content, params) => {
   try {
     // Use gemini-pro model
-    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     const prompt = `
       Create a multiple choice quiz based on this content:
@@ -81,7 +91,9 @@ export const generateQuizFromContent = async (content, params) => {
     // Generate content
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    const _text = response.text();
+    const text = _text.substring(7,_text.length-4);
+    console.log(text);
 
     // Parse and validate response
     const parsedResponse = JSON.parse(text);
