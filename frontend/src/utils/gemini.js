@@ -71,3 +71,42 @@ export const analyzeLearningStyle = async (answers) => {
     throw error;
   }
 };
+
+export const generateQuizFromContent = async (content, params) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const prompt = `
+      Create a quiz based on the following content. The quiz should:
+      - Have ${params.questionCount || 5} multiple choice questions
+      - Include 4 options for each question
+      - Provide explanations for correct answers
+      - Focus on key concepts and understanding
+      - Be at ${params.difficulty} difficulty level
+      
+      Content: ${content}
+      
+      Return the quiz in the following JSON format:
+      {
+        "questions": [
+          {
+            "text": "question text",
+            "options": ["option1", "option2", "option3", "option4"],
+            "correctAnswer": "correct option",
+            "explanation": "explanation for the answer"
+          }
+        ]
+      }
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    // Parse the JSON response
+    return JSON.parse(text);
+  } catch (error) {
+    console.error('Error generating quiz:', error);
+    throw error;
+  }
+};

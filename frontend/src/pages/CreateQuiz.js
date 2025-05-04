@@ -1,9 +1,10 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../utils/firebase';
+import { generateQuizFromContent } from '../utils/gemini';
 
 // MUI components
 import {
@@ -32,7 +33,8 @@ import {
   ListItemText,
   ListItemIcon,
   LinearProgress,
-  Slider
+  Slider,
+  Checkbox
 } from '@mui/material';
 
 // Icons
@@ -44,6 +46,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import EditIcon from '@mui/icons-material/Edit';
+import DescriptionIcon from '@mui/icons-material/Description';
 
 const CreateQuiz = () => {
   const { user } = useContext(AuthContext);
@@ -62,6 +65,9 @@ const CreateQuiz = () => {
   const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [materials, setMaterials] = useState([]);
+  const [selectedMaterials, setSelectedMaterials] = useState([]);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   const [questionFormData, setQuestionFormData] = useState({
     text: '',
@@ -101,6 +107,32 @@ const CreateQuiz = () => {
     { value: 3, label: 'Hard' }
   ];
   
+  // fetch available study materials (uploads)
+  const fetchMaterials = async () => {
+    try {
+      const materialsRef = collection(db, 'materials');
+      const q = query(materialsRef, where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      
+      const materialsList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      setMaterials(materialsList);
+    } catch (error) {
+      console.error('Error fetching materials:', error);
+      setError('Failed to load study materials');
+    }
+  };
+  
+  useEffect(() => {
+    if (user) {
+      fetchMaterials();
+    }
+  }, [user]);
+
+
   const handleChange = e => {
     const { name, value } = e.target;
     setFormData({
@@ -174,6 +206,10 @@ const CreateQuiz = () => {
         errors.subject = 'Subject is required';
       }
     } else if (step === 1) {
+      if (selectedMaterials.length === 0) {
+        errors.materials = 'Please select at least one study material';
+      }
+    } else if (step === 2) {
       if (questions.length === 0) {
         errors.questions = 'At least one question is required';
       }
@@ -225,9 +261,54 @@ const CreateQuiz = () => {
     return Object.keys(errors).length === 0;
   };
   
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validateStep(activeStep)) {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+      if (activeStep === 1 && selectedMaterials.length > 0) {
+        setGeneratingQuiz(true);
+        try {
+          // Fetch content from selected materials
+          const contents = await Promise.all(
+            selectedMaterials.map(async (materialId) => {
+              const material = materials.find(m => m.id === materialId);
+              if (!material) {
+                throw new Error('Selected material not found');
+              }
+              const storageRef = ref(storage, material.fileUrl);
+              const url = await getDownloadURL(storageRef);
+              const response = await fetch(url);
+              const text = await response.text();
+              return text;
+            })
+          );
+  
+          // Generate quiz using Gemini
+          const generatedQuiz = await generateQuizFromContent(
+            contents.join('\n\n'),
+            {
+              questionCount: 5,
+              difficulty: getDifficultyLabel(difficulty)
+            }
+          );
+  
+          // Update questions state
+          setFormData(prev => ({
+            ...prev,
+            questions: generatedQuiz.questions.map((q, index) => ({
+              id: `q${index + 1}`,
+              ...q
+            }))
+          }));
+  
+          setGeneratingQuiz(false);
+        } catch (error) {
+          console.error('Error generating quiz:', error);
+          setError('Failed to generate quiz. Please try again.');
+          setGeneratingQuiz(false);
+          return;
+        }
+      }
+  
+      setActiveStep(prev => prev + 1);
     }
   };
   
@@ -425,6 +506,7 @@ const CreateQuiz = () => {
   
   const steps = [
     {
+      
       label: 'Basic Information',
       description: 'Enter the basic details of your quiz',
       content: (
@@ -532,7 +614,65 @@ const CreateQuiz = () => {
           </Grid>
         </Box>
       )
-    },
+  },
+    {
+      
+      label: 'Select Materials',
+      description: 'Choose study materials for quiz generation',
+      content: (
+        <Box sx={{ py: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Select study materials to generate quiz from:
+          </Typography>
+          
+          {materials.length === 0 ? (
+            <Alert severity="info">
+              No study materials found. Please upload some materials first.
+            </Alert>
+          ) : (
+            <>
+              <List>
+                {materials.map((material) => (
+                  <ListItem
+                    key={material.id}
+                    secondaryAction={
+                      <Checkbox
+                        edge="end"
+                        checked={selectedMaterials.includes(material.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedMaterials([...selectedMaterials, material.id]);
+                          } else {
+                            setSelectedMaterials(selectedMaterials.filter(id => id !== material.id));
+                          }
+                        }}
+                      />
+                    }
+                  >
+                    <ListItemIcon>
+                      <DescriptionIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={material.title}
+                      secondary={material.description}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+
+              {generatingQuiz && (
+                <Box sx={{ mt: 4, textAlign: 'center' }}>
+                  <CircularProgress />
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                    Generating quiz from selected materials...
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </Box>
+      )
+  },
     {
       label: 'Questions',
       description: 'Add questions to your quiz',
