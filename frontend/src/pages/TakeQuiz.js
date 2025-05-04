@@ -93,7 +93,9 @@ const TakeQuiz = () => {
       };
       console.log(resultData);
       const resultDocRef = await addDoc(collection(db, 'quizResults'), resultData);
-      navigate(`/quiz-results`);
+      console.log(quizId);
+      console.log(resultDocRef.id);
+      navigate(`/quizzes/${quizId}/results/${resultDocRef.id}`);
     } catch (err) {
       console.error('Error submitting quiz:', err);
       setError('Failed to submit quiz. Please try again.');

@@ -83,7 +83,7 @@ const App = () => {
             <Route path="/quizzes/:id" element={<PrivateRoute component={QuizDetail} />} />
             <Route path="/quizzesTake/:quizId" element={<PrivateRoute component={TakeQuiz} />} />
             <Route path="/quizzes/create" element={<PrivateRoute component={CreateQuiz} />} />
-            <Route path="/quiz-results" element={<PrivateRoute component={QuizResults} />} />
+            <Route path="/quizzes/:quizId/results/:resultId" element={<PrivateRoute component={QuizResults} />} />
             <Route path="/grade-prediction" element={<PrivateRoute component={GradePrediction} />} />
             
             {/* 404 Route */}

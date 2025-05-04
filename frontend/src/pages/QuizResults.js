@@ -1,41 +1,31 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useParams, Link as RouterLink } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { db } from '../utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 // MUI
-import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import Grid from '@mui/material/Grid';
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import Alert from '@mui/material/Alert';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
+import {
+  Box, Container, Typography, Paper, Grid, Button, Chip,
+  CircularProgress, Alert, Card, CardContent, List, ListItem,
+  ListItemIcon, ListItemText
+} from '@mui/material';
 
 // Icons
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import QuizIcon from '@mui/icons-material/Quiz';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import ReplayIcon from '@mui/icons-material/Replay';
-import SchoolIcon from '@mui/icons-material/School';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import {
+  ArrowBack as ArrowBackIcon,
+  CheckCircle as CheckCircleIcon,
+  Cancel as CancelIcon,
+  AccessTime as AccessTimeIcon,
+  CalendarToday as CalendarTodayIcon,
+  EmojiEvents as EmojiEventsIcon,
+  Replay as ReplayIcon,
+  School as SchoolIcon,
+  HelpOutline as HelpOutlineIcon
+} from '@mui/icons-material';
 
 const QuizResults = () => {
   const { quizId, resultId } = useParams();
-  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
   const [quiz, setQuiz] = useState(null);
@@ -44,37 +34,47 @@ const QuizResults = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchQuiz = async () => {
       try {
         const quizRef = doc(db, 'quizzes', quizId);
-        const resultRef = doc(db, 'quizzes', quizId, 'results', resultId);
-
-        const [quizSnap, resultSnap] = await Promise.all([
-          getDoc(quizRef),
-          getDoc(resultRef)
-        ]);
-
-        if (!quizSnap.exists() || !resultSnap.exists()) {
-          setError('Quiz or result not found.');
-          setLoading(false);
-          return;
-        }
-
+        const quizSnap = await getDoc(quizRef);
+        if (!quizSnap.exists()) throw new Error('Quiz not found');
         setQuiz({ id: quizSnap.id, ...quizSnap.data() });
-        setResult({ id: resultSnap.id, ...resultSnap.data() });
-        setLoading(false);
       } catch (err) {
-        console.error(err);
-        setError('Failed to load quiz results.');
-        setLoading(false);
+        console.error('Error fetching quiz:', err);
+        setError('Failed to load quiz.');
       }
     };
 
-    fetchData();
+    const fetchResult = async () => {
+      try {
+        const resultRef = doc(db, 'quizResults', resultId);
+        const resultSnap = await getDoc(resultRef);
+        if (!resultSnap.exists()) throw new Error('Result not found');
+        setResult({ id: resultSnap.id, ...resultSnap.data() });
+      } catch (err) {
+        console.error('Error fetching result:', err);
+        setError('Failed to load result.');
+      }
+    };
+
+    Promise.all([fetchQuiz(), fetchResult()]).finally(() => setLoading(false));
   }, [quizId, resultId]);
 
-  const calculateScore = () =>
-    result ? Math.round((result.correctAnswers / result.totalQuestions) * 100) : 0;
+  const getAnswerStats = () => {
+    if (!result?.answers || !quiz?.questions) return { correct: 0, total: 0 };
+
+    const total = result.answers.length;
+    const correct = result.answers.reduce((acc, answer) => {
+      const question = quiz.questions.find(q => q.id === answer.questionId) || quiz.questions[acc];
+      return answer.selectedAnswer === question?.correctAnswer ? acc + 1 : acc;
+    }, 0);
+
+    return { correct, total };
+  };
+
+  const { correct, total } = getAnswerStats();
+  const score = total > 0 ? Math.round((correct / total) * 100) : 0;
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'success';
@@ -107,10 +107,10 @@ const QuizResults = () => {
     );
   }
 
-  if (error) {
+  if (error || !quiz || !result) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+        <Alert severity="error" sx={{ mb: 3 }}>{error || 'Unable to load quiz or result.'}</Alert>
         <Button variant="outlined" startIcon={<ArrowBackIcon />} component={RouterLink} to="/quizzes">
           Back to Quizzes
         </Button>
@@ -118,7 +118,6 @@ const QuizResults = () => {
     );
   }
 
-  const score = calculateScore();
   const scoreColor = getScoreColor(score);
 
   return (
@@ -146,7 +145,7 @@ const QuizResults = () => {
             {score}%
           </Typography>
           <Typography variant="body2">
-            {result.correctAnswers}/{result.totalQuestions}
+            {correct}/{total}
           </Typography>
         </Box>
 
@@ -198,7 +197,7 @@ const QuizResults = () => {
         Question Review
       </Typography>
 
-      {result.answers && result.answers.map((answer, index) => {
+      {result.answers.map((answer, index) => {
         const question = quiz.questions.find(q => q.id === answer.questionId) || quiz.questions[index];
         const isCorrect = answer.selectedAnswer === question.correctAnswer;
 
