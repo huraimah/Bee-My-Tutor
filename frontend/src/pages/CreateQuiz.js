@@ -263,9 +263,11 @@ const CreateQuiz = () => {
   
   const handleNext = async () => {
     if (validateStep(activeStep)) {
-      if (activeStep === 1 && selectedMaterials.length > 0) {
+      if (activeStep === 0) {
         setGeneratingQuiz(true);
         try {
+          console.log('Selected materials:', selectedMaterials); // Debug log
+          
           // Fetch content from selected materials
           const contents = await Promise.all(
             selectedMaterials.map(async (materialId) => {
@@ -273,13 +275,20 @@ const CreateQuiz = () => {
               if (!material) {
                 throw new Error('Selected material not found');
               }
-              const storageRef = ref(storage, material.fileUrl);
-              const url = await getDownloadURL(storageRef);
-              const response = await fetch(url);
-              const text = await response.text();
-              return text;
+              
+              try {
+                const response = await fetch(material.fileUrl);
+                if (!response.ok) throw new Error('Failed to fetch file content');
+                const text = await response.text();
+                return text;
+              } catch (error) {
+                console.error('Error fetching file:', error);
+                throw new Error(`Failed to read file: ${material.title}`);
+              }
             })
           );
+  
+          console.log('Content fetched successfully'); // Debug log
   
           // Generate quiz using Gemini
           const generatedQuiz = await generateQuizFromContent(
@@ -290,25 +299,24 @@ const CreateQuiz = () => {
             }
           );
   
+          console.log('Quiz generated:', generatedQuiz); // Debug log
+  
           // Update questions state
           setFormData(prev => ({
             ...prev,
-            questions: generatedQuiz.questions.map((q, index) => ({
-              id: `q${index + 1}`,
-              ...q
-            }))
+            questions: generatedQuiz.questions
           }));
   
           setGeneratingQuiz(false);
+          setActiveStep(prev => prev + 1);
         } catch (error) {
-          console.error('Error generating quiz:', error);
-          setError('Failed to generate quiz. Please try again.');
+          console.error('Error in handleNext:', error);
+          setError(`Failed to generate quiz: ${error.message}`);
           setGeneratingQuiz(false);
-          return;
         }
+      } else {
+        setActiveStep(prev => prev + 1);
       }
-  
-      setActiveStep(prev => prev + 1);
     }
   };
   

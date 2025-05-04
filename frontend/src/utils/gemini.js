@@ -1,10 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY);
+// Make sure you have the API key in your .env file
+const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
 
-export const getGeminiModel = () => {
-  return genAI.getGenerativeModel({ model: "gemini-pro" });
-};
+// Initialize the Gemini API
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 export const generateLearningStyleAssessment = async () => {
   try {
@@ -26,16 +26,13 @@ export const generateLearningStyleAssessment = async () => {
           ]
         }
       ]
-    }
-
-    Each question should have 4 options, one for each learning style.
-    Questions should focus on learning preferences and study habits.`;
+    }`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return JSON.parse(response.text());
   } catch (error) {
-    console.error("Gemini Assessment Generation Error:", error);
+    console.error("Learning Style Assessment Generation Error:", error);
     throw error;
   }
 };
@@ -43,70 +40,54 @@ export const generateLearningStyleAssessment = async () => {
 export const analyzeLearningStyle = async (answers) => {
   try {
     const model = getGeminiModel();
-    const prompt = `Analyze these learning style assessment answers:
-    ${JSON.stringify(answers)}
+    const prompt = `Analyze these learning style assessment answers: ${JSON.stringify(answers)}`;
     
-    Calculate percentages for each style and determine the dominant one.
-    Provide personalized recommendations.
-    
-    Return JSON with this structure:
-    {
-      "analysis": {
-        "visual": number,
-        "auditory": number,
-        "reading": number,
-        "kinesthetic": number,
-        "dominantStyle": "string",
-        "explanation": "string",
-        "strategies": ["string"],
-        "adaptations": "string"
-      }
-    }`;
-
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return JSON.parse(response.text());
   } catch (error) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("Learning Style Analysis Error:", error);
     throw error;
   }
 };
 
 export const generateQuizFromContent = async (content, params) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // Use gemini-pro model
+    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
 
     const prompt = `
-      Create a quiz based on the following content. The quiz should:
-      - Have ${params.questionCount || 5} multiple choice questions
-      - Include 4 options for each question
-      - Provide explanations for correct answers
-      - Focus on key concepts and understanding
-      - Be at ${params.difficulty} difficulty level
-      
-      Content: ${content}
-      
-      Return the quiz in the following JSON format:
+      Create a multiple choice quiz based on this content:
+      ${content}
+
+      Requirements:
+      - Generate exactly ${params.questionCount} questions
+      - Each question must have 4 options labeled A through D
+      - Include explanation for each correct answer
+      - Match this difficulty level: ${params.difficulty}
+
+      Return ONLY a JSON object in this exact format:
       {
         "questions": [
           {
-            "text": "question text",
-            "options": ["option1", "option2", "option3", "option4"],
-            "correctAnswer": "correct option",
-            "explanation": "explanation for the answer"
+            "text": "Question text",
+            "options": ["A) First", "B) Second", "C) Third", "D) Fourth"],
+            "correctAnswer": "A) First",
+            "explanation": "Explanation text"
           }
         ]
-      }
-    `;
+      }`;
 
+    // Generate content
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
-    
-    // Parse the JSON response
-    return JSON.parse(text);
+
+    // Parse and validate response
+    const parsedResponse = JSON.parse(text);
+    return parsedResponse;
   } catch (error) {
-    console.error('Error generating quiz:', error);
-    throw error;
+    console.error('Gemini API Error:', error);
+    throw new Error(error.message);
   }
 };
