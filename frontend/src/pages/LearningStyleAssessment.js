@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import { generateLearningStyleAssessment, analyzeLearningStyle } from '../utils/gemini';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../utils/firebase';
 
@@ -51,28 +50,168 @@ const LearningStyleAssessment = () => {
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  
-  useEffect(() => {
-    const initializeAssessment = async () => {
-      try {
-        if (location.state?.assessment) {
-          setAssessment(location.state.assessment);
-          setAnswers(new Array(location.state.assessment.questions.length).fill(null));
-        } else {
-          const generatedAssessment = await generateLearningStyleAssessment();
-          setAssessment(generatedAssessment);
-          setAnswers(new Array(generatedAssessment.questions.length).fill(null));
-        }
-      } catch (err) {
-        console.error('Error generating assessment:', err);
-        setError('Failed to generate assessment. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    initializeAssessment();
-  }, [location.state]);
+  const hardcodedAssessment = {
+    questions: [
+      {
+        id: 1,
+        text: "When learning something new, you prefer to...",
+        options: [
+          { id: "A", text: "Watch a video or see a diagram explaining it", style: "visual" },
+          { id: "B", text: "Have someone explain it to you out loud", style: "auditory" },
+          { id: "C", text: "Read a detailed description or written explanation", style: "reading" },
+          { id: "D", text: "Try it out for yourself or work with it physically", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 2,
+        text: "When someone gives you a list of items, you...",
+        options: [
+          { id: "A", text: "Picture them in your head", style: "visual" },
+          { id: "B", text: "Say them out loud or repeat them to yourself", style: "auditory" },
+          { id: "C", text: "Write them down or read them repeatedly", style: "reading" },
+          { id: "D", text: "Use your fingers to count or move around as you memorize", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 3,
+        text: "In a class or lecture, what keeps your attention best?",
+        options: [
+          { id: "A", text: "Visuals like charts, graphs, and images", style: "visual" },
+          { id: "B", text: "A speaker with a clear, engaging voice", style: "auditory" },
+          { id: "C", text: "Reading slides or writing notes", style: "reading" },
+          { id: "D", text: "Interactive activities or hands-on demos", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 4,
+        text: "If you're assembling furniture, what do you rely on most?",
+        options: [
+          { id: "A", text: "Diagrams and images", style: "visual" },
+          { id: "B", text: "A YouTube video with verbal instructions", style: "auditory" },
+          { id: "C", text: "Written step-by-step instructions", style: "reading" },
+          { id: "D", text: "Trial and error – just getting into it", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 5,
+        text: "When you don’t know how to spell a word, you...",
+        options: [
+          { id: "A", text: "Picture how the word looks", style: "visual" },
+          { id: "B", text: "Sound it out", style: "auditory" },
+          { id: "C", text: "Write it down to see if it “looks right”", style: "reading" },
+          { id: "D", text: "Trace it with your finger or type it", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 6,
+        text: "When you want to remember a phone number, you...",
+        options: [
+          { id: "A", text: "Visualize it in chunks (e.g., 647–888–1234)", style: "visual" },
+          { id: "B", text: "Repeat it out loud several times", style: "auditory" },
+          { id: "C", text: "Write it down or type it into notes", style: "reading" },
+          { id: "D", text: "Dial it a few times to remember how it “feels”", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 7,
+        text: "Your favourite way to take notes is...",
+        options: [
+          { id: "A", text: "Use arrows, symbols, and draw diagrams", style: "visual" },
+          { id: "B", text: "Record yourself or talk through ideas with someone", style: "auditory" },
+          { id: "C", text: "Write organized bullet points or summaries", style: "reading" },
+          { id: "D", text: "Use flashcards, hands-on apps, or create movement-based study tools", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 8,
+        text: "You’ve just received a new phone. What do you do first?",
+        options: [
+          { id: "A", text: "Look at the icons and explore menus visually", style: "visual" },
+          { id: "B", text: "Ask a friend to explain how to use it", style: "auditory" },
+          { id: "C", text: "Read the user manual or online FAQ", style: "reading" },
+          { id: "D", text: "Start pressing buttons to figure it out on your own", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 9,
+        text: "When remembering past experiences, you recall...",
+        options: [
+          { id: "A", text: "What things looked like", style: "visual" },
+          { id: "B", text: "What was said or heard", style: "auditory" },
+          { id: "C", text: "A written message, story, or script", style: "reading" },
+          { id: "D", text: "What you physically did or how you felt", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 10,
+        text: "You prefer teachers or instructors who...",
+        options: [
+          { id: "A", text: "Use visual aids and handouts", style: "visual" },
+          { id: "B", text: "Explain concepts clearly and answer questions out loud", style: "auditory" },
+          { id: "C", text: "Give structured reading assignments and notes", style: "reading" },
+          { id: "D", text: "Incorporate lab work, experiments, or activities", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 11,
+        text: "You learn a new word best when you...",
+        options: [
+          { id: "A", text: "See it written in a sentence or image", style: "visual" },
+          { id: "B", text: "Hear someone pronounce and explain it", style: "auditory" },
+          { id: "C", text: "Look it up and write it down with its meaning", style: "reading" },
+          { id: "D", text: "Use it in a sentence or role-play", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 12,
+        text: "Your ideal study session involves...",
+        options: [
+          { id: "A", text: "Watching videos or using colorful study guides", style: "visual" },
+          { id: "B", text: "Reading notes aloud or listening to podcasts", style: "auditory" },
+          { id: "C", text: "Rewriting notes and reading textbooks", style: "reading" },
+          { id: "D", text: "Doing practice problems or creating models", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 13,
+        text: "When learning a dance or movement, you prefer...",
+        options: [
+          { id: "A", text: "Watch someone else do it first", style: "visual" },
+          { id: "B", text: "Listen to the rhythm and instructions", style: "auditory" },
+          { id: "C", text: "Read a written breakdown of the steps", style: "reading" },
+          { id: "D", text: "Try the moves yourself and adjust based on how it feels", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 14,
+        text: "You remember best when...",
+        options: [
+          { id: "A", text: "You can visualize it in your head", style: "visual" },
+          { id: "B", text: "You hear it in a conversation or lecture", style: "auditory" },
+          { id: "C", text: "You’ve read it and written it down", style: "reading" },
+          { id: "D", text: "You’ve physically done it or acted it out", style: "kinesthetic" },
+        ],
+      },
+      {
+        id: 15,
+        text: "You find it hardest to learn when...",
+        options: [
+          { id: "A", text: "There are no visuals or demonstrations", style: "visual" },
+          { id: "B", text: "There’s no opportunity to hear explanations", style: "auditory" },
+          { id: "C", text: "Nothing is written down", style: "reading" },
+          { id: "D", text: "You can’t move, interact, or experiment with the material", style: "kinesthetic" },
+        ],
+      },
+    ],
+  };
+
+  useEffect(() => {
+    // Use hardcoded assessment instead of generating
+    setAssessment(hardcodedAssessment);
+    setAnswers(new Array(hardcodedAssessment.questions.length).fill(null));
+    setLoading(false);
+  }, []);
   
   const handleAnswerChange = (value) => {
     const newAnswers = [...answers];
@@ -97,37 +236,104 @@ const LearningStyleAssessment = () => {
       setError('Please answer all questions before submitting.');
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
-      // Format answers for analysis
-      const formattedAnswers = answers.map((answer, index) => {
+      // Local analysis based on hardcoded questions
+      const styleCounts = { visual: 0, auditory: 0, reading: 0, kinesthetic: 0 };
+      const totalQuestions = assessment.questions.length;
+
+      answers.forEach((answer, index) => {
         const question = assessment.questions[index];
         const selectedOption = question.options.find(option => option.id === answer);
-        
-        return {
-          questionId: index + 1,
-          selectedOptionId: answer,
-          style: selectedOption.style
-        };
+        if (selectedOption && selectedOption.style) {
+          styleCounts[selectedOption.style]++;
+        }
       });
-      
-      // Get analysis from Gemini
-      const analysis = await analyzeLearningStyle(formattedAnswers);
-      
+
+      const learningStylePercentages = {
+        visual: Math.round((styleCounts.visual / totalQuestions) * 100),
+        auditory: Math.round((styleCounts.auditory / totalQuestions) * 100),
+        reading: Math.round((styleCounts.reading / totalQuestions) * 100),
+        kinesthetic: Math.round((styleCounts.kinesthetic / totalQuestions) * 100),
+      };
+
+      const dominantStyle = Object.keys(learningStylePercentages).reduce((a, b) =>
+        learningStylePercentages[a] > learningStylePercentages[b] ? a : b
+      );
+
+      // Hardcoded analysis and strategies based on dominant style
+      let analysisDetails = {
+        explanation: "Based on your responses, your dominant learning style is [Dominant Style]. This means you tend to learn best through methods associated with this style.",
+        strategies: [],
+        adaptations: "Consider adapting your study materials to align with your dominant style. For example, [Adaptation Suggestion]."
+      };
+
+      switch (dominantStyle) {
+        case 'visual':
+          analysisDetails.explanation = analysisDetails.explanation.replace('[Dominant Style]', 'Visual');
+          analysisDetails.strategies = [
+            "Use diagrams, charts, and maps to organize information.",
+            "Highlight important points in different colors.",
+            "Watch videos and use visual presentations.",
+            "Create flashcards with images.",
+          ];
+          analysisDetails.adaptations = analysisDetails.adaptations.replace('[Adaptation Suggestion]', 'turn notes into diagrams or mind maps');
+          break;
+        case 'auditory':
+          analysisDetails.explanation = analysisDetails.explanation.replace('[Dominant Style]', 'Auditory');
+          analysisDetails.strategies = [
+            "Listen to lectures and participate in discussions.",
+            "Read notes aloud or record them to listen later.",
+            "Use mnemonics and rhymes.",
+            "Study with a partner and explain concepts to each other.",
+          ];
+          analysisDetails.adaptations = analysisDetails.adaptations.replace('[Adaptation Suggestion]', 'read textbooks aloud or find audio summaries');
+          break;
+        case 'reading':
+          analysisDetails.explanation = analysisDetails.explanation.replace('[Dominant Style]', 'Reading/Writing');
+          analysisDetails.strategies = [
+            "Take detailed notes and rewrite them.",
+            "Read textbooks and articles carefully.",
+            "Create summaries and outlines.",
+            "Use lists and headings to structure information.",
+          ];
+          analysisDetails.adaptations = analysisDetails.adaptations.replace('[Adaptation Suggestion]', 'summarize lectures and create written study guides');
+          break;
+        case 'kinesthetic':
+          analysisDetails.explanation = analysisDetails.explanation.replace('[Dominant Style]', 'Kinesthetic');
+          analysisDetails.strategies = [
+            "Engage in hands-on activities and experiments.",
+            "Take breaks to move around.",
+            "Use flashcards and interactive apps.",
+            "Role-play or act out concepts.",
+          ];
+          analysisDetails.adaptations = analysisDetails.adaptations.replace('[Adaptation Suggestion]', 'use physical models or practice problems');
+          break;
+        default:
+          break;
+      }
+
+
       // Save results to Firestore
       if (auth.currentUser) {
         await setDoc(doc(db, 'users', auth.currentUser.uid), {
-          learningStyle: analysis.analysis,
+          learningStyle: {
+            ...learningStylePercentages,
+            dominantStyle: dominantStyle
+          },
           assessmentCompleted: true,
           lastUpdated: new Date().toISOString()
         }, { merge: true });
       }
-      
+
       setResult({
-        learningStyle: analysis.analysis,
-        analysis: analysis.analysis
+        learningStyle: {
+          ...learningStylePercentages,
+          dominantStyle: dominantStyle
+        },
+        analysis: analysisDetails
       });
     } catch (err) {
       console.error('Error analyzing assessment:', err);
@@ -379,7 +585,7 @@ const LearningStyleAssessment = () => {
         <Stepper activeStep={currentQuestion} alternativeLabel sx={{ mb: 4 }}>
           {assessment.questions.map((_, index) => (
             <Step key={index}>
-              <StepLabel>{`Question ${index + 1}`}</StepLabel>
+              <StepLabel>{index + 1}</StepLabel>
             </Step>
           ))}
         </Stepper>

@@ -27,6 +27,7 @@ import TakeQuiz from './pages/TakeQuiz';
 import CreateQuiz from './pages/CreateQuiz';
 import QuizResults from './pages/QuizResults';
 import GradePrediction from './pages/GradePrediction';
+import LearningStyleInfo from './pages/LearningStyleInfo'; // Import the new component
 import NotFound from './pages/NotFound';
 
 // Create theme
@@ -66,6 +67,7 @@ const App = () => {
             {/* Private Routes */}
             <Route path="/dashboard" element={<PrivateRoute component={Dashboard} />} />
             <Route path="/learning-style" element={<PrivateRoute component={LearningStyleAssessment} />} />
+            <Route path="/learning-style-info" element={<PrivateRoute component={LearningStyleInfo} />} /> {/* Add the new route */}
             
             {/* Study Materials Routes */}
             <Route path="/materials" element={<PrivateRoute component={StudyMaterials} />} />

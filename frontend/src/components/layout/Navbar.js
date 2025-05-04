@@ -280,7 +280,7 @@ const Navbar = () => {
                   <MenuItem component={RouterLink} to="/dashboard" onClick={handleCloseUserMenu}>
                     <Typography textAlign="center">Dashboard</Typography>
                   </MenuItem>
-                  <MenuItem component={RouterLink} to="/learning-style" onClick={handleCloseUserMenu}>
+                  <MenuItem component={RouterLink} to="/learning-style-info" onClick={handleCloseUserMenu}>
                     <Typography textAlign="center">Learning Style</Typography>
                   </MenuItem>
                   <MenuItem onClick={handleLogout}>

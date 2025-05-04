@@ -1,8 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
-import { generateLearningStyleAssessment } from '../utils/gemini';
 import { useNavigate } from 'react-router-dom';
 
 // MUI components
@@ -35,6 +34,7 @@ import PendingIcon from '@mui/icons-material/Pending';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Get location
   const { user, loading } = useContext(AuthContext);
   const [stats, setStats] = useState({
     materials: { count: 0, recent: [] },
@@ -119,7 +119,7 @@ const Dashboard = () => {
     if (!loading && user) {
       fetchDashboardData();
     }
-  }, [loading, user]);
+  }, [loading, user, location.pathname]); // Add location.pathname as dependency
 
   if (loading || dataLoading) {
     return (
@@ -134,20 +134,8 @@ const Dashboard = () => {
     );
   }
 
-  const handleLearningStyleClick = async () => {
-    if (stats.learningStyle?.dominantStyle === 'unknown') {
-      try {
-        // Generate new assessment
-        const assessment = await generateLearningStyleAssessment();
-        // Store in state/context if needed
-        navigate('/learning-style', { state: { assessment } });
-      } catch (err) {
-        console.error('Error generating assessment:', err);
-        // Handle error
-      }
-    } else {
-      navigate('/learning-style');
-    }
+  const handleLearningStyleClick = () => {
+    navigate('/learning-style');
   };
   
   // Update the button click handler
@@ -162,7 +150,7 @@ const Dashboard = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Welcome, {user?.displayName}!
+        Welcome to your study dashboard, {user?.displayName}! 📖
       </Typography>
       
       {/* Learning Style Card */}
@@ -200,7 +188,7 @@ const Dashboard = () => {
             <Button
               variant="contained"
               component={RouterLink}
-              to="/learning-style"
+              to="/learning-style-info"
               startIcon={<SchoolIcon />}
             >
               {stats.learningStyle?.dominantStyle === 'unknown' ? 'Take Assessment' : 'View Details'}
@@ -222,10 +210,6 @@ const Dashboard = () => {
                   Study Materials
                 </Typography>
               </Box>
-              <Typography variant="h4" color="text.secondary" gutterBottom>
-                {stats.materials.count}
-              </Typography>
-              
               {stats.materials.recent.length > 0 ? (
                 <List dense>
                   {stats.materials.recent.map((material) => (
@@ -280,10 +264,6 @@ const Dashboard = () => {
                   Study Plans
                 </Typography>
               </Box>
-              <Typography variant="h4" color="text.secondary" gutterBottom>
-                {stats.plans.count}
-              </Typography>
-              
               {stats.plans.nextSession ? (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="subtitle1" gutterBottom>
@@ -349,10 +329,6 @@ const Dashboard = () => {
                   Quizzes
                 </Typography>
               </Box>
-              <Typography variant="h4" color="text.secondary" gutterBottom>
-                {stats.quizzes.count}
-              </Typography>
-              
               {stats.quizzes.recent.length > 0 ? (
                 <>
                   <Typography variant="body2" color="text.secondary" gutterBottom>

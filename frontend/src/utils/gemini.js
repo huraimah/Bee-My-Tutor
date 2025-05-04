@@ -16,45 +16,36 @@ const getGeminiModel = () => {
   return genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 }
 
-export const generateLearningStyleAssessment = async () => {
-  try {
-    const model = getGeminiModel();
-    const prompt = `Create a learning style assessment with 10 multiple choice questions to determine if someone is a Visual, Auditory, Reading/Writing, or Kinesthetic learner.
-
-    Format the response as a JSON object with this structure:
-    {
-      "questions": [
-        {
-          "id": number,
-          "text": "question text",
-          "options": [
-            {
-              "id": "unique_id",
-              "text": "option text",
-              "style": "visual|auditory|reading|kinesthetic"
-            }
-          ]
-        }
-      ]
-    }`;
-
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return JSON.parse(response.text());
-  } catch (error) {
-    console.error("Learning Style Assessment Generation Error:", error);
-    throw error;
-  }
-};
-
 export const analyzeLearningStyle = async (answers) => {
   try {
     const model = getGeminiModel();
-    const prompt = `Analyze these learning style assessment answers: ${JSON.stringify(answers)}`;
+    const prompt = `Analyze these learning style assessment answers: ${JSON.stringify(answers)}
+    
+    Based on the provided answers, calculate the percentage for each learning style (Visual, Auditory, Reading/Writing, Kinesthetic). Determine the dominant learning style.
+    
+    Provide a brief explanation of what the dominant style means for the user and suggest 3-5 actionable study strategies tailored to that style. Also, suggest how they can adapt materials to better suit their style.
+    
+    Format the response as a JSON object with this structure:
+    {
+      "learningStyle": {
+        "visual": number,
+        "auditory": number,
+        "reading": number,
+        "kinesthetic": number,
+        "dominantStyle": "visual|auditory|reading|kinesthetic"
+      },
+      "analysis": {
+        "explanation": "Explanation of the dominant style.",
+        "strategies": ["Strategy 1", "Strategy 2", "Strategy 3"],
+        "adaptations": "How to adapt materials."
+      }
+    }`;
     
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    return JSON.parse(response.text());
+    // Clean up potential markdown formatting from Gemini response
+    const text = response.text().replace(/^```json\n/, '').replace(/\n```$/, '');
+    return JSON.parse(text);
   } catch (error) {
     console.error("Learning Style Analysis Error:", error);
     throw error;
