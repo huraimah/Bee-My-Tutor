@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
+import { AuthContext } from '../context/AuthContext';
 import CardMedia from '@mui/material/CardMedia';
 import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
@@ -20,6 +21,9 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import InsightsIcon from '@mui/icons-material/Insights';
 
 const Home = () => {
+
+  const { user, loading } = useContext(AuthContext);
+
   return (
     <>
       {/* Hero Section */}
@@ -51,26 +55,19 @@ const Home = () => {
                 Personalized learning powered by AI. Discover your learning style, organize study materials, create tailored study plans, and test your knowledge with AI-generated quizzes.
               </Typography>
               <Box sx={{ mt: 4 }}>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  size="large"
-                  component={RouterLink}
-                  to="/register"
-                  sx={{ mr: 2, mb: 2 }}
-                >
-                  Get Started
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  size="large"
-                  component={RouterLink}
-                  to="/login"
-                  sx={{ mb: 2 }}
-                >
-                  Login
-                </Button>
+              {
+                loading || !user ? 
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    size="large"
+                    component={RouterLink}
+                    to="/login"
+                    sx={{ mr: 2, mb: 2 }}
+                  >
+                    Get Started
+                  </Button> : <></>
+              }
               </Box>
             </Grid>
             <Grid item xs={12} md={5}>
@@ -298,7 +295,9 @@ const Home = () => {
       </Box>
 
       {/* CTA Section */}
-      <Container maxWidth="md" sx={{ mb: 8 }}>
+      {
+        loading || !user ? 
+        <Container maxWidth="md" sx={{ mb: 8 }}>
         <Paper
           sx={{
             p: 4,
@@ -306,7 +305,7 @@ const Home = () => {
             color: 'white',
             textAlign: 'center'
           }}
-        >
+          >
           <Typography variant="h4" gutterBottom>
             Ready to transform your learning experience?
           </Typography>
@@ -324,7 +323,8 @@ const Home = () => {
             Get Started Now
           </Button>
         </Paper>
-      </Container>
+      </Container> : <></>
+      }  
 
       {/* Footer */}
       <Box
