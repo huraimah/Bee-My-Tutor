@@ -16,21 +16,22 @@ EduGenius is an intelligent education platform that leverages AI to personalize 
 ### Backend
 - Node.js
 - Express.js
-- MongoDB
 - Google Gemini API for AI capabilities
-- JWT Authentication
+- Google Firebase
 
 ### Frontend
 - React
-- Material-UI
 - React Router
+- Redux
 - Axios
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
-- MongoDB
 - Google Gemini API key
+- Google Firebase authenticator
+- Gogle Firebase storage
+- Google Firebase database
 
 ## Installation
 
