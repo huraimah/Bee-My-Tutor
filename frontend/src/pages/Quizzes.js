@@ -260,7 +260,7 @@ const Quizzes = () => {
                   <Divider />
                   <CardActions>
                     <Button size="small" component={RouterLink} to={`/quizzes/${quiz._id}`}>View</Button>
-                    <Button size="small" color="primary" component={RouterLink} to={`/quizzes/${quiz._id}/take`} startIcon={<SchoolIcon />}>
+                    <Button size="small" color="primary" component={RouterLink} to={`/quizzesTake/${quiz._id}`} startIcon={<SchoolIcon />}>
                       Take Quiz
                     </Button>
                     <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteQuiz(quiz._id)}>

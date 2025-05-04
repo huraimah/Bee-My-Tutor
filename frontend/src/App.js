@@ -23,6 +23,7 @@ import StudyPlanDetail from './pages/StudyPlanDetail';
 import CreateStudyPlan from './pages/CreateStudyPlan';
 import Quizzes from './pages/Quizzes';
 import QuizDetail from './pages/QuizDetail';
+import TakeQuiz from './pages/TakeQuiz';
 import CreateQuiz from './pages/CreateQuiz';
 import QuizResults from './pages/QuizResults';
 import GradePrediction from './pages/GradePrediction';
@@ -78,6 +79,7 @@ const App = () => {
             {/* Quiz Routes */}
             <Route path="/quizzes" element={<PrivateRoute component={Quizzes} />} />
             <Route path="/quizzes/:id" element={<PrivateRoute component={QuizDetail} />} />
+            <Route path="/quizzesTake/:quizId" element={<PrivateRoute component={TakeQuiz} />} />
             <Route path="/quizzes/create" element={<PrivateRoute component={CreateQuiz} />} />
             <Route path="/quiz-results" element={<PrivateRoute component={QuizResults} />} />
             <Route path="/grade-prediction" element={<PrivateRoute component={GradePrediction} />} />
