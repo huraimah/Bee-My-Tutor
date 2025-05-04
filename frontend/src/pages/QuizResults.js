@@ -1,26 +1,25 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
+import { db } from '../utils/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-// MUI components
+// MUI
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
-import Divider from '@mui/material/Divider';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
-import Chip from '@mui/material/Chip';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import LinearProgress from '@mui/material/LinearProgress';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 
 // Icons
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -38,61 +37,58 @@ const QuizResults = () => {
   const { quizId, resultId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  
+
   const [quiz, setQuiz] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   useEffect(() => {
-    const fetchQuizAndResult = async () => {
+    const fetchData = async () => {
       try {
-        // Fetch quiz data
-        const quizRes = await axios.get(`/api/quizzes/${quizId}`);
-        setQuiz(quizRes.data);
-        
-        // Fetch specific result
-        const resultRes = await axios.get(`/api/quizzes/${quizId}/results/${resultId}`);
-        setResult(resultRes.data);
-        
+        const quizRef = doc(db, 'quizzes', quizId);
+        const resultRef = doc(db, 'quizzes', quizId, 'results', resultId);
+
+        const [quizSnap, resultSnap] = await Promise.all([
+          getDoc(quizRef),
+          getDoc(resultRef)
+        ]);
+
+        if (!quizSnap.exists() || !resultSnap.exists()) {
+          setError('Quiz or result not found.');
+          setLoading(false);
+          return;
+        }
+
+        setQuiz({ id: quizSnap.id, ...quizSnap.data() });
+        setResult({ id: resultSnap.id, ...resultSnap.data() });
         setLoading(false);
       } catch (err) {
-        console.error('Error fetching quiz results:', err);
-        setError('Failed to load quiz results. Please try again later.');
+        console.error(err);
+        setError('Failed to load quiz results.');
         setLoading(false);
       }
     };
 
-    fetchQuizAndResult();
+    fetchData();
   }, [quizId, resultId]);
-  
-  // Calculate score percentage
-  const calculateScore = () => {
-    if (!result) return 0;
-    return Math.round((result.correctAnswers / result.totalQuestions) * 100);
-  };
-  
-  // Get score color
+
+  const calculateScore = () =>
+    result ? Math.round((result.correctAnswers / result.totalQuestions) * 100) : 0;
+
   const getScoreColor = (score) => {
     if (score >= 80) return 'success';
     if (score >= 60) return 'primary';
     if (score >= 40) return 'warning';
     return 'error';
   };
-  
-  // Format time taken
+
   const formatTimeTaken = (seconds) => {
-    if (!seconds) return 'N/A';
-    
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    
-    if (minutes === 0) return `${remainingSeconds} seconds`;
-    if (remainingSeconds === 0) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    return `${minutes} minute${minutes > 1 ? 's' : ''} ${remainingSeconds} second${remainingSeconds > 1 ? 's' : ''}`;
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+    return `${min > 0 ? `${min} min${min > 1 ? 's' : ''} ` : ''}${sec} sec${sec !== 1 ? 's' : ''}`;
   };
-  
-  // Get feedback based on score
+
   const getFeedback = (score) => {
     if (score >= 90) return 'Excellent! You have mastered this topic.';
     if (score >= 80) return 'Great job! You have a strong understanding of this topic.';
@@ -102,314 +98,141 @@ const QuizResults = () => {
     if (score >= 40) return 'You need to study more to improve your understanding.';
     return 'You should review this topic thoroughly before trying again.';
   };
-  
+
   if (loading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="80vh"
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
         <CircularProgress />
       </Box>
     );
   }
-  
+
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          component={RouterLink}
-          to={`/quizzes/${quizId}`}
-        >
-          Back to Quiz
-        </Button>
-      </Container>
-    );
-  }
-  
-  if (!quiz || !result) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          Quiz or result not found.
-        </Alert>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          component={RouterLink}
-          to="/quizzes"
-        >
+      <Container maxWidth="lg" sx={{ mt: 4 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
+        <Button variant="outlined" startIcon={<ArrowBackIcon />} component={RouterLink} to="/quizzes">
           Back to Quizzes
         </Button>
       </Container>
     );
   }
-  
+
   const score = calculateScore();
   const scoreColor = getScoreColor(score);
-  
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          component={RouterLink}
-          to={`/quizzes/${quizId}`}
-          sx={{ mb: 2 }}
-        >
-          Back to Quiz
-        </Button>
-        
-        <Paper sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <QuizIcon color="primary" sx={{ fontSize: 40, mr: 2 }} />
-              <Typography variant="h4" component="h1">
-                Quiz Results: {quiz.title}
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Chip 
-              label={quiz.subject} 
-              color="primary" 
-              variant="outlined" 
-              sx={{ mr: 1 }} 
-            />
-            <Chip 
-              label={`Completed: ${new Date(result.date).toLocaleDateString()}`} 
-              color="default"
-              variant="outlined"
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 4 }}>
-            <Box
-              sx={{
-                position: 'relative',
-                display: 'inline-flex',
-              }}
-            >
-              <CircularProgress
-                variant="determinate"
-                value={score}
-                size={160}
-                thickness={5}
-                color={scoreColor}
-              />
-              <Box
-                sx={{
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  right: 0,
-                  position: 'absolute',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'column',
-                }}
-              >
-                <Typography
-                  variant="h3"
-                  component="div"
-                  color={`${scoreColor}.main`}
-                >
-                  {score}%
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {result.correctAnswers}/{result.totalQuestions}
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-          
-          <Typography variant="h6" align="center" color={`${scoreColor}.main`} gutterBottom>
-            {getFeedback(score)}
+      <Button
+        variant="outlined"
+        startIcon={<ArrowBackIcon />}
+        component={RouterLink}
+        to={`/quizzes/${quizId}`}
+        sx={{ mb: 2 }}
+      >
+        Back to Quiz
+      </Button>
+
+      <Paper sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          Quiz Results: {quiz.title}
+        </Typography>
+        <Chip label={quiz.subject} sx={{ mr: 1 }} />
+        <Chip label={`Completed: ${new Date(result.date).toLocaleDateString()}`} />
+
+        <Box sx={{ textAlign: 'center', my: 4 }}>
+          <CircularProgress variant="determinate" value={score} size={160} thickness={5} color={scoreColor} />
+          <Typography variant="h3" color={`${scoreColor}.main`} sx={{ mt: -10 }}>
+            {score}%
           </Typography>
-          
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <AccessTimeIcon color="action" sx={{ mr: 1 }} />
-                    <Typography variant="h6">
-                      Time Taken
-                    </Typography>
-                  </Box>
-                  <Typography variant="h5" align="center">
-                    {formatTimeTaken(result.timeTaken)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <CalendarTodayIcon color="action" sx={{ mr: 1 }} />
-                    <Typography variant="h6">
-                      Date Completed
-                    </Typography>
-                  </Box>
-                  <Typography variant="h5" align="center">
-                    {new Date(result.date).toLocaleDateString()}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={4}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <EmojiEventsIcon color="action" sx={{ mr: 1 }} />
-                    <Typography variant="h6">
-                      Performance
-                    </Typography>
-                  </Box>
-                  <Typography variant="h5" align="center" color={`${scoreColor}.main`}>
-                    {score >= 80 ? 'Excellent' : 
-                     score >= 70 ? 'Good' : 
-                     score >= 60 ? 'Satisfactory' : 
-                     score >= 50 ? 'Fair' : 'Needs Improvement'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+          <Typography variant="body2">
+            {result.correctAnswers}/{result.totalQuestions}
+          </Typography>
+        </Box>
+
+        <Typography variant="h6" align="center" color={`${scoreColor}.main`} gutterBottom>
+          {getFeedback(score)}
+        </Typography>
+
+        <Grid container spacing={3} sx={{ mt: 2 }}>
+          <Grid item xs={12} md={4}>
+            <Card><CardContent>
+              <AccessTimeIcon /> <Typography>Time Taken: {formatTimeTaken(result.timeTaken)}</Typography>
+            </CardContent></Card>
           </Grid>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, gap: 2 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<ReplayIcon />}
-              component={RouterLink}
-              to={`/quizzes/${quizId}/take`}
-            >
-              Retake Quiz
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<SchoolIcon />}
-              component={RouterLink}
-              to="/study-materials"
-            >
-              Study Materials
-            </Button>
-          </Box>
-        </Paper>
-      </Box>
-      
-      <Typography variant="h5" gutterBottom>
+          <Grid item xs={12} md={4}>
+            <Card><CardContent>
+              <CalendarTodayIcon /> <Typography>Date: {new Date(result.date).toLocaleDateString()}</Typography>
+            </CardContent></Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card><CardContent>
+              <EmojiEventsIcon /> <Typography>Performance: {getFeedback(score)}</Typography>
+            </CardContent></Card>
+          </Grid>
+        </Grid>
+
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<ReplayIcon />}
+            component={RouterLink}
+            to={`/quizzes/${quizId}/take`}
+            sx={{ mr: 2 }}
+          >
+            Retake Quiz
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<SchoolIcon />}
+            component={RouterLink}
+            to="/study-materials"
+          >
+            Study Materials
+          </Button>
+        </Box>
+      </Paper>
+
+      <Typography variant="h5" sx={{ mt: 5 }}>
         Question Review
       </Typography>
-      
+
       {result.answers && result.answers.map((answer, index) => {
-        const question = quiz.questions.find(q => q._id === answer.questionId) || 
-                         quiz.questions[index]; // Fallback if ID matching fails
-        
+        const question = quiz.questions.find(q => q.id === answer.questionId) || quiz.questions[index];
         const isCorrect = answer.selectedAnswer === question.correctAnswer;
-        
+
         return (
-          <Paper key={index} sx={{ mb: 3, overflow: 'hidden' }}>
-            <Box sx={{ 
-              bgcolor: isCorrect ? 'success.light' : 'error.light', 
-              color: 'white', 
-              p: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Typography variant="subtitle1">
-                Question {index + 1}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                {isCorrect ? (
-                  <>
-                    <CheckCircleIcon sx={{ mr: 1 }} />
-                    <Typography variant="body2">Correct</Typography>
-                  </>
-                ) : (
-                  <>
-                    <CancelIcon sx={{ mr: 1 }} />
-                    <Typography variant="body2">Incorrect</Typography>
-                  </>
-                )}
+          <Paper key={index} sx={{ mt: 3, p: 2, backgroundColor: isCorrect ? 'success.light' : 'error.light' }}>
+            <Typography variant="subtitle1">Question {index + 1}</Typography>
+            <Typography>{question.text}</Typography>
+            <List dense>
+              {question.options.map((option, idx) => (
+                <ListItem key={idx}>
+                  <ListItemIcon>
+                    {option === question.correctAnswer ? <CheckCircleIcon color="success" />
+                      : option === answer.selectedAnswer && !isCorrect ? <CancelIcon color="error" />
+                      : <HelpOutlineIcon color="disabled" />}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={option}
+                    sx={{
+                      ...(option === question.correctAnswer && { fontWeight: 'bold', color: 'success.main' }),
+                      ...(option === answer.selectedAnswer && !isCorrect && { color: 'error.main', textDecoration: 'line-through' })
+                    }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+            {question.explanation && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100' }}>
+                <Typography variant="subtitle2">Explanation:</Typography>
+                <Typography variant="body2">{question.explanation}</Typography>
               </Box>
-            </Box>
-            
-            <Box sx={{ p: 2 }}>
-              <Typography variant="body1" gutterBottom>
-                {question.text}
-              </Typography>
-              
-              <List dense>
-                {question.options.map((option, optIndex) => (
-                  <ListItem key={optIndex}>
-                    <ListItemIcon>
-                      {option === question.correctAnswer ? (
-                        <CheckCircleIcon color="success" />
-                      ) : option === answer.selectedAnswer && !isCorrect ? (
-                        <CancelIcon color="error" />
-                      ) : (
-                        <HelpOutlineIcon color="disabled" />
-                      )}
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={option} 
-                      sx={{
-                        ...(option === question.correctAnswer && {
-                          fontWeight: 'bold',
-                          color: 'success.main'
-                        }),
-                        ...(option === answer.selectedAnswer && !isCorrect && {
-                          color: 'error.main',
-                          textDecoration: 'line-through'
-                        })
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-              
-              {question.explanation && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Explanation:
-                  </Typography>
-                  <Typography variant="body2">
-                    {question.explanation}
-                  </Typography>
-                </Box>
-              )}
-            </Box>
+            )}
           </Paper>
         );
       })}
-      
-      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<ReplayIcon />}
-          component={RouterLink}
-          to={`/quizzes/${quizId}/take`}
-        >
-          Retake Quiz
-        </Button>
-      </Box>
     </Container>
   );
 };
