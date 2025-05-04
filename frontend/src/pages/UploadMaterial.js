@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { auth, storage, db } from '../utils/firebase';
+import { uploadWithRetry } from '../utils/firebase-utils';
 
 // MUI components
 import Box from '@mui/material/Box';
@@ -164,6 +165,26 @@ const UploadMaterial = () => {
       setLoading(true);
       setError(null);
       
+      try {
+        const metadata = {
+          contentType: file.type,
+          customMetadata: {
+            originalName: file.name
+          }
+        };
+      
+        const storageRef = ref(storage, `materials/${Date.now()}-${file.name}`);
+        const uploadTask = await uploadWithRetry(storageRef, file, metadata);
+      
+        uploadTask.on('state_changed',
+          // ...existing progress handler...
+        );
+      } catch (err) {
+        console.error('Upload error:', err);
+        setError('Upload failed. Please try again.');
+        setLoading(false);
+      }
+
       try {
         // Validate file size
         if (file.size > 10 * 1024 * 1024) {

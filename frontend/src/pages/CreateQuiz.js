@@ -1,43 +1,39 @@
 import React, { useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../utils/firebase';
-
+import { db, storage } from '../utils/firebase';
 
 // MUI components
-import Box from '@mui/material/Box';
-import Container from '@mui/material/Container';
-import Typography from '@mui/material/Typography';
-import Paper from '@mui/material/Paper';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
-import Grid from '@mui/material/Grid';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import Divider from '@mui/material/Divider';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import IconButton from '@mui/material/IconButton';
-import FormHelperText from '@mui/material/FormHelperText';
-import Radio from '@mui/material/Radio';
-import RadioGroup from '@mui/material/RadioGroup';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import FormLabel from '@mui/material/FormLabel';
-import Slider from '@mui/material/Slider';
-import Tooltip from '@mui/material/Tooltip';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Alert,
+  CircularProgress,
+  Grid,
+  Stepper,
+  Step,
+  StepLabel,
+  Divider,
+  IconButton,
+  FormHelperText,
+  Radio,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  LinearProgress,
+  Slider
+} from '@mui/material';
 
 // Icons
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -46,10 +42,8 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import EditIcon from '@mui/icons-material/Edit';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 const CreateQuiz = () => {
   const { user } = useContext(AuthContext);
@@ -62,26 +56,25 @@ const CreateQuiz = () => {
     description: '',
     subject: '',
     difficulty: 2,
-    timeLimit: 0, // 0 means no time limit
+    timeLimit: 0,
     questions: []
   });
   const [formErrors, setFormErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Question form data
+
   const [questionFormData, setQuestionFormData] = useState({
     text: '',
     options: ['', '', '', ''],
     correctAnswer: '',
     explanation: '',
-    file: null 
+    file: null
   });
   const [questionFormErrors, setQuestionFormErrors] = useState({});
   const [editingQuestionIndex, setEditingQuestionIndex] = useState(null);
   
   const { title, description, subject, difficulty, timeLimit, questions } = formData;
-  
+
   const subjects = [
     'Mathematics',
     'Physics',
@@ -101,20 +94,11 @@ const CreateQuiz = () => {
     'Physical Education',
     'Other'
   ];
-  
+
   const difficultyMarks = [
-    {
-      value: 1,
-      label: 'Easy',
-    },
-    {
-      value: 2,
-      label: 'Medium',
-    },
-    {
-      value: 3,
-      label: 'Hard',
-    },
+    { value: 1, label: 'Easy' },
+    { value: 2, label: 'Medium' },
+    { value: 3, label: 'Hard' }
   ];
   
   const handleChange = e => {
@@ -891,6 +875,16 @@ const CreateQuiz = () => {
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
             {steps[activeStep].content}
             
+            {/* Add progress indicator here */}
+            {loading && (
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <LinearProgress variant="determinate" value={uploadProgress} />
+                <Typography variant="body2" color="text.secondary" align="center">
+                  Uploading: {Math.round(uploadProgress)}%
+                </Typography>
+              </Box>
+            )}
+            
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
               <Button
                 variant="outlined"
@@ -928,5 +922,4 @@ const CreateQuiz = () => {
     </Container>
   );
 };
-
 export default CreateQuiz;
