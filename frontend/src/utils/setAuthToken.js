@@ -1,11 +1,11 @@
-import axios from 'axios';
+import api from '../api.js';
 
-// Set or remove the auth token in axios headers
+// Set or remove the auth token in api headers
 const setAuthToken = token => {
   if (token) {
-    axios.defaults.headers.common['x-auth-token'] = token;
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   } else {
-    delete axios.defaults.headers.common['x-auth-token'];
+    delete api.defaults.headers.common['Authorization'];
   }
 };
 

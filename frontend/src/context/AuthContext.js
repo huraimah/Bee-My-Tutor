@@ -1,5 +1,5 @@
 import React, { createContext, useReducer, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api.js';
 import { 
   signInWithPopup, 
   signOut, 
@@ -64,11 +64,11 @@ export const AuthProvider = ({ children }) => {
     if (user) {
       // Get the ID token from Firebase user
       const token = await user.getIdToken();
-      // Set the token in axios headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Set the token in api headers
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     } else {
-      // Remove the token from axios headers
-      delete axios.defaults.headers.common['Authorization'];
+      // Remove the token from api headers
+      delete api.defaults.headers.common['Authorization'];
     }
   };
 
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
         // Get additional user data from your backend if needed
         // This is optional - you can also just use the Firebase user data
         try {
-          const res = await axios.get('/api/auth/me');
+          const res = await api.get('/api/auth/me');
           // Combine Firebase user with any additional backend data
           const userData = {
             uid: user.uid,

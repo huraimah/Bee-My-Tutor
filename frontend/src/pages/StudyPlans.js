@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -50,7 +50,7 @@ const StudyPlans = () => {
   useEffect(() => {
     const fetchStudyPlans = async () => {
       try {
-        const res = await axios.get('/api/study/plans');
+        const res = await api.get('/api/study/plans');
         setStudyPlans(res.data);
         setLoading(false);
       } catch (err) {
@@ -96,7 +96,7 @@ const StudyPlans = () => {
   const handleDeletePlan = async (id) => {
     if (window.confirm('Are you sure you want to delete this study plan?')) {
       try {
-        await axios.delete(`/api/study/plans/${id}`);
+        await api.delete(`/api/study/plans/${id}`);
         setStudyPlans(studyPlans.filter(plan => plan._id !== id));
       } catch (err) {
         console.error('Error deleting study plan:', err);

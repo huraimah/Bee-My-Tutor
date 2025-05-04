@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -48,13 +48,13 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 const GradePrediction = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  
+
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [predicting, setPredicting] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  
+
   // Form data
   const [formData, setFormData] = useState({
     subject: '',
@@ -67,18 +67,18 @@ const GradePrediction = () => {
     difficultyLevel: 2,
     targetGrade: ''
   });
-  
+
   // Prediction results
   const [prediction, setPrediction] = useState(null);
-  
+
   // Form errors
   const [formErrors, setFormErrors] = useState({});
-  
+
   // Get user's learning style from profile
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const res = await axios.get('/api/users/profile');
+        const res = await api.get('/api/users/profile');
         if (res.data.learningStyle) {
           setFormData(prev => ({
             ...prev,
@@ -89,15 +89,15 @@ const GradePrediction = () => {
         console.error('Error fetching user profile:', err);
       }
     };
-    
+
     fetchUserProfile();
   }, []);
-  
+
   // Get user's quiz scores
   useEffect(() => {
     const fetchQuizScores = async () => {
       try {
-        const res = await axios.get('/api/quizzes/user-results');
+        const res = await api.get('/api/quizzes/user-results');
         if (res.data && res.data.length > 0) {
           // Format quiz scores for the form
           const scores = res.data.map(quiz => ({
@@ -105,7 +105,7 @@ const GradePrediction = () => {
             quizTitle: quiz.title,
             score: Math.round((quiz.correctAnswers / quiz.totalQuestions) * 100)
           }));
-          
+
           setFormData(prev => ({
             ...prev,
             quizScores: scores
@@ -115,10 +115,10 @@ const GradePrediction = () => {
         console.error('Error fetching quiz scores:', err);
       }
     };
-    
+
     fetchQuizScores();
   }, []);
-  
+
   const subjects = [
     'Mathematics',
     'Physics',
@@ -138,7 +138,7 @@ const GradePrediction = () => {
     'Physical Education',
     'Other'
   ];
-  
+
   const learningStyles = [
     'Visual',
     'Auditory',
@@ -146,9 +146,9 @@ const GradePrediction = () => {
     'Kinesthetic',
     'Multimodal'
   ];
-  
+
   const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F'];
-  
+
   const difficultyMarks = [
     {
       value: 1,
@@ -163,14 +163,14 @@ const GradePrediction = () => {
       label: 'Hard',
     },
   ];
-  
+
   const handleChange = e => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
       [name]: value
     });
-    
+
     // Clear field-specific error when user starts typing
     if (formErrors[name]) {
       setFormErrors({
@@ -179,13 +179,13 @@ const GradePrediction = () => {
       });
     }
   };
-  
+
   const handleSliderChange = (name, value) => {
     setFormData({
       ...formData,
       [name]: value
     });
-    
+
     // Clear field-specific error
     if (formErrors[name]) {
       setFormErrors({
@@ -194,109 +194,109 @@ const GradePrediction = () => {
       });
     }
   };
-  
+
   const validateStep = (step) => {
     const errors = {};
-    
+
     if (step === 0) {
       if (!formData.subject) {
         errors.subject = 'Subject is required';
       }
-      
+
       if (!formData.currentGrade) {
         errors.currentGrade = 'Current grade is required';
       }
-      
+
       if (!formData.targetGrade) {
         errors.targetGrade = 'Target grade is required';
       }
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-  
+
   const handleNext = () => {
     if (validateStep(activeStep)) {
       setActiveStep((prevActiveStep) => prevActiveStep + 1);
     }
   };
-  
+
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (validateStep(activeStep)) {
       setPredicting(true);
       setError(null);
-      
+
       try {
         // In a real application, this would call an API endpoint
         // For this demo, we'll simulate a prediction
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
+
         // Calculate a predicted grade based on the input factors
         const gradeIndex = grades.indexOf(formData.currentGrade);
         const targetIndex = grades.indexOf(formData.targetGrade);
-        
+
         // Factors that influence the prediction
         const studyFactor = formData.studyHoursPerWeek / 10; // 0.5 to 2.0
         const attendanceFactor = formData.attendanceRate / 100; // 0 to 1
         const assignmentFactor = formData.completedAssignments / 100; // 0 to 1
-        
+
         // Average quiz score (if available)
         const avgQuizScore = formData.quizScores.length > 0
           ? formData.quizScores.reduce((sum, quiz) => sum + quiz.score, 0) / formData.quizScores.length / 100
           : 0.7; // Default if no quizzes
-        
+
         // Difficulty factor (harder courses are harder to improve in)
         const difficultyFactor = 1 - ((formData.difficultyLevel - 1) / 4); // 0.75 to 0.5
-        
+
         // Calculate improvement potential (0 to 1)
-        const improvementPotential = (studyFactor * 0.3) + 
-                                    (attendanceFactor * 0.2) + 
-                                    (assignmentFactor * 0.2) + 
-                                    (avgQuizScore * 0.3);
-        
+        const improvementPotential = (studyFactor * 0.3) +
+          (attendanceFactor * 0.2) +
+          (assignmentFactor * 0.2) +
+          (avgQuizScore * 0.3);
+
         // Apply difficulty factor
         const adjustedPotential = improvementPotential * difficultyFactor;
-        
+
         // Calculate maximum possible improvement in grade steps
         const maxImprovement = Math.floor(adjustedPotential * 5); // 0 to 5 grade steps
-        
+
         // Calculate predicted grade index (can't go beyond A+)
         const predictedIndex = Math.max(0, Math.min(gradeIndex - maxImprovement, grades.length - 1));
         const predictedGrade = grades[predictedIndex];
-        
+
         // Calculate likelihood of achieving target
         const stepsToTarget = gradeIndex - targetIndex;
         const likelihood = stepsToTarget <= 0 ? 100 : // Already achieved
-                          stepsToTarget > maxImprovement ? 
-                          Math.round((maxImprovement / stepsToTarget) * 100) : 
-                          100; // Can achieve target
-        
+          stepsToTarget > maxImprovement ?
+            Math.round((maxImprovement / stepsToTarget) * 100) :
+            100; // Can achieve target
+
         // Generate recommendations based on the factors
         const recommendations = [];
-        
+
         if (formData.studyHoursPerWeek < 7) {
           recommendations.push('Increase your study time to at least 7-10 hours per week');
         }
-        
+
         if (formData.attendanceRate < 90) {
           recommendations.push('Improve your class attendance to at least 90%');
         }
-        
+
         if (formData.completedAssignments < 95) {
           recommendations.push('Complete all assignments on time');
         }
-        
+
         if (avgQuizScore < 0.7) {
           recommendations.push('Focus on improving quiz scores through regular practice');
         }
-        
+
         // Add learning style recommendation
         if (formData.learningStyle) {
           const styleRecommendations = {
@@ -306,17 +306,17 @@ const GradePrediction = () => {
             'Kinesthetic': 'Use hands-on activities and practical applications',
             'Multimodal': 'Combine different learning methods for better retention'
           };
-          
+
           recommendations.push(styleRecommendations[formData.learningStyle]);
         }
-        
+
         // Add subject-specific recommendation
         if (formData.subject === 'Mathematics' || formData.subject === 'Physics') {
           recommendations.push('Practice solving problems regularly');
         } else if (formData.subject === 'Literature' || formData.subject === 'History') {
           recommendations.push('Focus on critical analysis and essay writing skills');
         }
-        
+
         // Set prediction result
         setPrediction({
           predictedGrade,
@@ -328,7 +328,7 @@ const GradePrediction = () => {
           assignmentImpact: Math.round(assignmentFactor * 100),
           quizImpact: Math.round(avgQuizScore * 100)
         });
-        
+
         setPredicting(false);
         setSuccess(true);
       } catch (err) {
@@ -337,7 +337,7 @@ const GradePrediction = () => {
       }
     }
   };
-  
+
   // Get grade color
   const getGradeColor = (grade) => {
     if (grade === 'A+' || grade === 'A' || grade === 'A-') return 'success';
@@ -345,7 +345,7 @@ const GradePrediction = () => {
     if (grade === 'C+' || grade === 'C' || grade === 'C-') return 'warning';
     return 'error';
   };
-  
+
   // Get likelihood color
   const getLikelihoodColor = (likelihood) => {
     if (likelihood >= 80) return 'success';
@@ -353,7 +353,7 @@ const GradePrediction = () => {
     if (likelihood >= 40) return 'warning';
     return 'error';
   };
-  
+
   const steps = [
     {
       label: 'Basic Information',
@@ -382,7 +382,7 @@ const GradePrediction = () => {
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12} md={4}>
               <FormControl fullWidth required error={!!formErrors.currentGrade}>
                 <InputLabel id="currentGrade-label">Current Grade</InputLabel>
@@ -405,7 +405,7 @@ const GradePrediction = () => {
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12} md={4}>
               <FormControl fullWidth required error={!!formErrors.targetGrade}>
                 <InputLabel id="targetGrade-label">Target Grade</InputLabel>
@@ -428,7 +428,7 @@ const GradePrediction = () => {
                 )}
               </FormControl>
             </Grid>
-            
+
             <Grid item xs={12}>
               <Typography id="difficulty-slider" gutterBottom>
                 Course Difficulty Level
@@ -444,7 +444,7 @@ const GradePrediction = () => {
                 aria-labelledby="difficulty-slider"
               />
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel id="learningStyle-label">Your Learning Style</InputLabel>
@@ -497,7 +497,7 @@ const GradePrediction = () => {
                 aria-labelledby="studyHours-slider"
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Typography id="attendance-slider" gutterBottom>
                 Class Attendance Rate: {formData.attendanceRate}%
@@ -519,7 +519,7 @@ const GradePrediction = () => {
                 aria-labelledby="attendance-slider"
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Typography id="assignments-slider" gutterBottom>
                 Completed Assignments: {formData.completedAssignments}%
@@ -541,12 +541,12 @@ const GradePrediction = () => {
                 aria-labelledby="assignments-slider"
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>
                 Quiz Performance
               </Typography>
-              
+
               {formData.quizScores.length === 0 ? (
                 <Alert severity="info">
                   No quiz scores available. Taking quizzes will help improve prediction accuracy.
@@ -561,13 +561,13 @@ const GradePrediction = () => {
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                           <Box sx={{ width: '100%', mr: 1 }}>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={quiz.score} 
+                            <LinearProgress
+                              variant="determinate"
+                              value={quiz.score}
                               color={
-                                quiz.score >= 80 ? 'success' : 
-                                quiz.score >= 60 ? 'primary' : 
-                                quiz.score >= 40 ? 'warning' : 'error'
+                                quiz.score >= 80 ? 'success' :
+                                  quiz.score >= 60 ? 'primary' :
+                                    quiz.score >= 40 ? 'warning' : 'error'
                               }
                               sx={{ height: 8, borderRadius: 4 }}
                             />
@@ -605,7 +605,7 @@ const GradePrediction = () => {
               <Alert severity="success" sx={{ mb: 3 }}>
                 Grade prediction generated successfully!
               </Alert>
-              
+
               <Grid container spacing={4}>
                 <Grid item xs={12} md={6}>
                   <Card>
@@ -613,7 +613,7 @@ const GradePrediction = () => {
                       <Typography variant="h6" gutterBottom>
                         Predicted Grade
                       </Typography>
-                      
+
                       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', my: 3 }}>
                         <Box
                           sx={{
@@ -654,94 +654,94 @@ const GradePrediction = () => {
                           </Box>
                         </Box>
                       </Box>
-                      
+
                       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-                        <Chip 
-                          label={`Target: ${formData.targetGrade}`} 
-                          color={getGradeColor(formData.targetGrade)} 
-                          variant="outlined" 
-                          sx={{ mr: 1 }} 
+                        <Chip
+                          label={`Target: ${formData.targetGrade}`}
+                          color={getGradeColor(formData.targetGrade)}
+                          variant="outlined"
+                          sx={{ mr: 1 }}
                         />
-                        <Chip 
-                          label={`Current: ${formData.currentGrade}`} 
-                          color={getGradeColor(formData.currentGrade)} 
+                        <Chip
+                          label={`Current: ${formData.currentGrade}`}
+                          color={getGradeColor(formData.currentGrade)}
                         />
                       </Box>
-                      
+
                       <Typography variant="body2" align="center" color="text.secondary">
-                        {prediction.likelihood >= 80 
-                          ? "You're on track to achieve your target grade!" 
-                          : prediction.likelihood >= 50 
-                          ? "You have a good chance of reaching your target with some improvements." 
-                          : "You'll need significant improvements to reach your target grade."}
+                        {prediction.likelihood >= 80
+                          ? "You're on track to achieve your target grade!"
+                          : prediction.likelihood >= 50
+                            ? "You have a good chance of reaching your target with some improvements."
+                            : "You'll need significant improvements to reach your target grade."}
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
-                
+
                 <Grid item xs={12} md={6}>
                   <Card>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
                         Performance Factors
                       </Typography>
-                      
+
                       <Box sx={{ mb: 2 }}>
                         <Typography variant="body2" gutterBottom>
                           Study Time Impact
                         </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={prediction.studyImpact} 
+                        <LinearProgress
+                          variant="determinate"
+                          value={prediction.studyImpact}
                           color="primary"
                           sx={{ height: 8, borderRadius: 4, mb: 2 }}
                         />
-                        
+
                         <Typography variant="body2" gutterBottom>
                           Attendance Impact
                         </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={prediction.attendanceImpact} 
+                        <LinearProgress
+                          variant="determinate"
+                          value={prediction.attendanceImpact}
                           color="secondary"
                           sx={{ height: 8, borderRadius: 4, mb: 2 }}
                         />
-                        
+
                         <Typography variant="body2" gutterBottom>
                           Assignment Completion Impact
                         </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={prediction.assignmentImpact} 
+                        <LinearProgress
+                          variant="determinate"
+                          value={prediction.assignmentImpact}
                           color="success"
                           sx={{ height: 8, borderRadius: 4, mb: 2 }}
                         />
-                        
+
                         <Typography variant="body2" gutterBottom>
                           Quiz Performance Impact
                         </Typography>
-                        <LinearProgress 
-                          variant="determinate" 
-                          value={prediction.quizImpact} 
+                        <LinearProgress
+                          variant="determinate"
+                          value={prediction.quizImpact}
                           color="warning"
                           sx={{ height: 8, borderRadius: 4 }}
                         />
                       </Box>
-                      
+
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
                         Overall Improvement Potential: {prediction.improvementPotential}%
                       </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
-                
+
                 <Grid item xs={12}>
                   <Card>
                     <CardContent>
                       <Typography variant="h6" gutterBottom>
                         Recommendations
                       </Typography>
-                      
+
                       <List>
                         {prediction.recommendations.map((recommendation, index) => (
                           <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
@@ -752,13 +752,13 @@ const GradePrediction = () => {
                           </Box>
                         ))}
                       </List>
-                      
+
                       <Divider sx={{ my: 2 }} />
-                      
+
                       <Typography variant="subtitle1" gutterBottom>
                         Next Steps
                       </Typography>
-                      
+
                       <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid item xs={12} sm={6} md={4}>
                           <Button
@@ -826,7 +826,7 @@ const GradePrediction = () => {
       )
     }
   ];
-  
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 4 }}>
@@ -839,7 +839,7 @@ const GradePrediction = () => {
         >
           Back to Dashboard
         </Button>
-        
+
         <Paper sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
             <TrendingUpIcon color="primary" sx={{ fontSize: 40, mr: 2 }} />
@@ -847,13 +847,13 @@ const GradePrediction = () => {
               Grade Prediction
             </Typography>
           </Box>
-          
+
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
               {error}
             </Alert>
           )}
-          
+
           <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
             {steps.map((step) => (
               <Step key={step.label}>
@@ -861,10 +861,10 @@ const GradePrediction = () => {
               </Step>
             ))}
           </Stepper>
-          
+
           <Box component="form" sx={{ mt: 2 }}>
             {steps[activeStep].content}
-            
+
             {!success && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
                 <Button
@@ -875,7 +875,7 @@ const GradePrediction = () => {
                 >
                   Back
                 </Button>
-                
+
                 {activeStep === steps.length - 1 ? (
                   <Button
                     variant="contained"

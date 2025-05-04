@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -52,7 +52,7 @@ const LearningStyleAssessment = () => {
   useEffect(() => {
     const fetchLearningStyle = async () => {
       try {
-        const res = await axios.get('/api/users/learning-style');
+        const res = await api.get('/api/users/learning-style');
         
         if (res.data.isCompleted) {
           // User has already completed the assessment
@@ -118,7 +118,7 @@ const LearningStyleAssessment = () => {
       });
       
       // Submit answers to API
-      const res = await axios.post('/api/users/learning-style', {
+      const res = await api.post('/api/users/learning-style', {
         answers: formattedAnswers
       });
       

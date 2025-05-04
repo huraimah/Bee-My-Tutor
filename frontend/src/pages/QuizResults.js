@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -48,11 +48,11 @@ const QuizResults = () => {
     const fetchQuizAndResult = async () => {
       try {
         // Fetch quiz data
-        const quizRes = await axios.get(`/api/quizzes/${quizId}`);
+        const quizRes = await api.get(`/api/quizzes/${quizId}`);
         setQuiz(quizRes.data);
         
         // Fetch specific result
-        const resultRes = await axios.get(`/api/quizzes/${quizId}/results/${resultId}`);
+        const resultRes = await api.get(`/api/quizzes/${quizId}/results/${resultId}`);
         setResult(resultRes.data);
         
         setLoading(false);

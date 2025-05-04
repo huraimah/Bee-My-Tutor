@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -333,7 +333,7 @@ const CreateQuiz = () => {
           questions: formattedQuestions
         };
         
-        const res = await axios.post('/api/quizzes', dataToSubmit);
+        const res = await api.post('/api/quizzes', dataToSubmit);
         
         setLoading(false);
         navigate(`/quizzes/${res.data._id}`);

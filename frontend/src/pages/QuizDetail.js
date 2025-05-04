@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -91,7 +91,7 @@ const QuizDetail = () => {
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
-        const res = await axios.get(`/api/quizzes/${id}`);
+        const res = await api.get(`/api/quizzes/${id}`);
         setQuiz(res.data);
         setLoading(false);
       } catch (err) {
@@ -121,7 +121,7 @@ const QuizDetail = () => {
   // Handle delete quiz
   const handleDeleteQuiz = async () => {
     try {
-      await axios.delete(`/api/quizzes/${id}`);
+      await api.delete(`/api/quizzes/${id}`);
       handleCloseDeleteDialog();
       navigate('/quizzes');
     } catch (err) {

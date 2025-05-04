@@ -76,7 +76,7 @@ const QuizResultSchema = new mongoose.Schema({
 
 const QuizSchema = new mongoose.Schema({
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true
   },

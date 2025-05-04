@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from "../api.js";
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -172,7 +172,7 @@ const UploadMaterial = () => {
       formDataToSend.append('file', file);
       
       try {
-        await axios.post('/api/study/materials', formDataToSend, {
+        await api.post('/api/study/materials', formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data'
           },

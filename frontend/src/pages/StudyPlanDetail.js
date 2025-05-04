@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -98,7 +98,7 @@ const StudyPlanDetail = () => {
   useEffect(() => {
     const fetchStudyPlan = async () => {
       try {
-        const res = await axios.get(`/api/study/plans/${id}`);
+        const res = await api.get(`/api/study/plans/${id}`);
         setStudyPlan(res.data);
         setLoading(false);
       } catch (err) {
@@ -247,7 +247,7 @@ const StudyPlanDetail = () => {
       try {
         if (editingSessionId) {
           // Update existing session
-          await axios.put(`/api/study/plans/${id}/sessions/${editingSessionId}`, sessionFormData);
+          await api.put(`/api/study/plans/${id}/sessions/${editingSessionId}`, sessionFormData);
           
           // Update local state
           setStudyPlan({
@@ -260,7 +260,7 @@ const StudyPlanDetail = () => {
           });
         } else {
           // Create new session
-          const res = await axios.post(`/api/study/plans/${id}/sessions`, sessionFormData);
+          const res = await api.post(`/api/study/plans/${id}/sessions`, sessionFormData);
           
           // Update local state
           setStudyPlan({
@@ -292,7 +292,7 @@ const StudyPlanDetail = () => {
   // Handle delete session
   const handleDeleteSession = async () => {
     try {
-      await axios.delete(`/api/study/plans/${id}/sessions/${deletingSessionId}`);
+      await api.delete(`/api/study/plans/${id}/sessions/${deletingSessionId}`);
       
       // Update local state
       setStudyPlan({
@@ -311,7 +311,7 @@ const StudyPlanDetail = () => {
   // Handle toggle session completion
   const handleToggleSessionCompletion = async (sessionId, completed) => {
     try {
-      await axios.patch(`/api/study/plans/${id}/sessions/${sessionId}`, { completed });
+      await api.patch(`/api/study/plans/${id}/sessions/${sessionId}`, { completed });
       
       // Update local state
       setStudyPlan({

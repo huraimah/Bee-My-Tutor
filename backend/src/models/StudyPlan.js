@@ -59,7 +59,7 @@ const StudySessionSchema = new mongoose.Schema({
 
 const StudyPlanSchema = new mongoose.Schema({
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -46,7 +46,7 @@ const StudyMaterials = () => {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const res = await axios.get('/api/study/materials');
+        const res = await api.get('/api/study/materials');
         setMaterials(res.data);
         setLoading(false);
       } catch (err) {
@@ -92,7 +92,7 @@ const StudyMaterials = () => {
   const handleDeleteMaterial = async (id) => {
     if (window.confirm('Are you sure you want to delete this material?')) {
       try {
-        await axios.delete(`/api/study/materials/${id}`);
+        await api.delete(`/api/study/materials/${id}`);
         setMaterials(materials.filter(material => material._id !== id));
       } catch (err) {
         console.error('Error deleting study material:', err);

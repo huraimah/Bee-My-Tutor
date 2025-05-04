@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api.js';
 import { AuthContext } from '../context/AuthContext';
 
 // MUI components
@@ -46,19 +46,19 @@ const Dashboard = () => {
     const fetchDashboardData = async () => {
       try {
         // Fetch learning style
-        const learningStyleRes = await axios.get('/api/users/learning-style');
+        const learningStyleRes = await api.get('/api/users/learning-style');
         
         // Fetch study materials
-        const materialsRes = await axios.get('/api/study/materials');
+        const materialsRes = await api.get('/api/study/materials');
         
         // Fetch study plans
-        const plansRes = await axios.get('/api/study/plans');
+        const plansRes = await api.get('/api/study/plans');
         
         // Fetch quizzes
-        const quizzesRes = await axios.get('/api/quiz');
+        const quizzesRes = await api.get('/api/quiz');
         
         // Fetch user stats
-        const statsRes = await axios.get('/api/users/stats');
+        const statsRes = await api.get('/api/users/stats');
         
         // Find next study session
         let nextSession = null;

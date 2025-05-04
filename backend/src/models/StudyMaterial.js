@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const StudyMaterialSchema = new mongoose.Schema({
   user: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String,
     ref: 'User',
     required: true
   },
