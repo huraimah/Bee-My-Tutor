@@ -74,7 +74,9 @@ export const AuthProvider = ({ children }) => {
 
   // Load user function - called when auth state changes
   const handleAuthStateChanged = async (user) => {
+    console.log('AuthContext handleAuthStateChanged: user object:', user);
     if (user) {
+      console.log('AuthContext handleAuthStateChanged: User is authenticated');
       try {
         // Set the auth token for API requests
         await setAuthToken(user);
@@ -117,16 +119,21 @@ export const AuthProvider = ({ children }) => {
         });
       }
     } else {
+      console.log('AuthContext handleAuthStateChanged: User is NOT authenticated');
       dispatch({ type: 'LOGOUT' });
     }
   };
 
   // Set up auth state listener
   useEffect(() => {
+    console.log('AuthContext useEffect: Setting up auth state listener');
     const unsubscribe = onAuthStateChanged(auth, handleAuthStateChanged);
     
     // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return () => {
+      console.log('AuthContext useEffect: Cleaning up auth state listener');
+      unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

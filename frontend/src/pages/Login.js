@@ -22,8 +22,8 @@ const Login = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // If already authenticated, redirect to dashboard
-    if (isAuthenticated) {
+    // If already authenticated and loading is false, redirect to dashboard
+    if (isAuthenticated && !loading) {
       navigate('/dashboard');
     }
     
@@ -31,7 +31,7 @@ const Login = () => {
     clearError();
     
     // eslint-disable-next-line
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loading]);
   
   const handleGoogleSignIn = async () => {
     try {
